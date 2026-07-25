@@ -17,19 +17,36 @@ export default class Paintings {
 
     async loadPaintingData() {
         // Support multiple data sources (priority order):
-        // 1. ?data=<url_encoded_json> — inline data for share links
+        // 1. ?data=<base64_json> or #data=<base64_json> — inline data for share links
         // 2. ?paintings=https://xxx/paintings.json — remote JSON URL
         // 3. Local default file
         const urlParams = new URLSearchParams(window.location.search)
         
-        const inlineData = urlParams.get('data')
+        let inlineData = urlParams.get('data')
+        let dataEncoding = 'url' // URL-encoded JSON
+        
+        // Also check hash fragment: #data=<base64>
+        if (!inlineData && window.location.hash) {
+            const hashParams = new URLSearchParams(window.location.hash.slice(1))
+            inlineData = hashParams.get('data')
+            if (inlineData) dataEncoding = 'base64'
+        }
+        
         if (inlineData) {
             try {
-                this.paintingData = JSON.parse(decodeURIComponent(inlineData))
+                let parsed
+                if (dataEncoding === 'base64') {
+                    // Base64-encoded UTF-8 JSON
+                    const json = decodeURIComponent(escape(atob(inlineData)))
+                    parsed = JSON.parse(json)
+                } else {
+                    parsed = JSON.parse(decodeURIComponent(inlineData))
+                }
+                this.paintingData = parsed
                 this.createPaintingsFromData()
                 return
             } catch (e) {
-                console.warn('[NeuroGallery] Failed to parse inline data, falling back to default')
+                console.warn('[NeuroGallery] Failed to parse inline data, falling back to default:', e)
             }
         }
         

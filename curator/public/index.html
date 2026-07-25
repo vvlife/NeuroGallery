@@ -342,7 +342,7 @@
                 </div>
                 <p class="field-hint">
                     配置后，AI 会帮你策划展览方案（展品名称、描述、搜索词），效果更好。<br>
-                    <b>不配置也能用</b>——直接从 Wikimedia Commons 搜索图片，用 Wikipedia 摘要作为描述。<br>
+                    <b>不配置也能用</b>——直接从 Wikimedia Commons 搜索图片，用图片元数据作为描述。<br>
                     API Key 仅保存在浏览器 localStorage 中，不会上传到任何服务器。
                     获取地址：https://www.agnes-ai.com/
                 </p>
@@ -353,9 +353,10 @@
             <h3>📎 分享链接</h3>
             <div class="share-link">
                 <input id="shareLink" type="text" readonly value="" />
+                <button id="shortenBtn" class="btn-secondary">缩短</button>
                 <button id="copyLink" class="btn-secondary">复制</button>
             </div>
-            <p class="hint" style="margin-top:8px;">
+            <p class="hint" id="shareHint" style="margin-top:8px;">
                 此链接包含完整展品数据，打开即可查看展览。
             </p>
         </div>
@@ -387,9 +388,8 @@ const progressLabel = $('progressLabel')
 // ---- Configuration ----
 const GALLERY_URL = 'https://vvlife.github.io/NeuroGallery/'
 
-// AI text API endpoints (try in order)
+// AI text API endpoints (try in order — only remote, no localhost for production)
 const API_BASES = [
-    'http://localhost:3001/api',
     'https://neurogallery-umber.vercel.app/api'
 ]
 
@@ -438,7 +438,7 @@ async function detectApiBase() {
     // If user has a personal API key, we can use any API base (they all proxy to the same upstream)
     for (const base of API_BASES) {
         try {
-            const r = await fetch(base + '/health', { signal: AbortSignal.timeout(5000) })
+            const r = await fetch(base + '/health', { signal: AbortSignal.timeout(8000) })
             if (r.ok) {
                 const s = await r.json()
                 if (s.ok) {
@@ -470,7 +470,7 @@ async function refreshStatus() {
     }
 
     try {
-        const r = await fetch(GALLERY_URL, { method: 'HEAD', signal: AbortSignal.timeout(5000) })
+        const r = await fetch(GALLERY_URL, { method: 'HEAD', signal: AbortSignal.timeout(8000) })
         pillGallery.textContent = '画廊：' + (r.ok ? '在线' : '离线')
         pillGallery.className = 'pill ' + (r.ok ? 'on' : 'off')
     } catch {
@@ -489,7 +489,6 @@ async function generateText(prompt, system) {
     }
 
     const headers = { 'Content-Type': 'application/json' }
-    // If user has a personal API key, pass it in the header
     if (userApiKey) {
         headers['X-User-Api-Key'] = userApiKey
     }
@@ -510,7 +509,7 @@ async function searchCommonsImage(query) {
         'https://commons.wikimedia.org/w/api.php?action=query' +
         '&generator=search&gsrsearch=' + encodeURIComponent(query) +
         '&gsrnamespace=6&gsrlimit=10' +
-        '&prop=imageinfo&iiprop=url|mime|size&iiurlwidth=1200&format=json' +
+        '&prop=imageinfo&iiprop=url|mime|size|extmetadata&iiurlwidth=1200&format=json' +
         '&origin=*'
 
     const r = await fetch(url)
@@ -521,25 +520,55 @@ async function searchCommonsImage(query) {
         const ii = p.imageinfo && p.imageinfo[0]
         if (ii && /image\/(jpeg|png)/.test(ii.mime || '')) {
             const thumb = ii.thumburl || ii.url
-            if (thumb) return { imgUrl: thumb, originalUrl: ii.url, title: p.title }
+            if (thumb) return { imgUrl: thumb, originalUrl: ii.url, title: p.title, imageinfo: ii }
         }
     }
     return null
 }
 
-// ---- Wikipedia summary fetch ----
-async function fetchWikipediaSummary(query) {
-    const url =
-        'https://en.wikipedia.org/api/rest_v1/page/summary/' +
-        encodeURIComponent(query.replace(/\s+/g, '_'))
-    const r = await fetch(url)
-    if (!r.ok) return null
-    const j = await r.json()
-    return {
-        title: j.title,
-        extract: j.extract,
-        contentUrl: j.content_urls && j.content_urls.desktop && j.content_urls.desktop.page
+// ---- HTML strip helper ----
+function stripHtml(html) {
+    if (!html) return ''
+    // Remove HTML tags, decode common entities
+    return html
+        .replace(/<[^>]*>/g, '')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&nbsp;/g, ' ')
+        .trim()
+}
+
+// ---- Extract description from Commons extmetadata ----
+function extractDescription(imageinfo) {
+    const meta = imageinfo.extmetadata || {}
+    // Try ImageDescription first (most detailed)
+    let desc = stripHtml(meta.ImageDescription && meta.ImageDescription.value)
+    // If too long, truncate
+    if (desc && desc.length > 10) {
+        return desc.slice(0, 300)
     }
+    // Fall back to ObjectName
+    let name = stripHtml(meta.ObjectName && meta.ObjectName.value)
+    if (name && name.length > 3) {
+        // Build a short description from artist + object name
+        let artist = stripHtml(meta.Artist && meta.Artist.value)
+        if (artist) {
+            artist = artist.slice(0, 80)
+            return `${name} — ${artist}`
+        }
+        return name
+    }
+    // Fall back to title from page
+    return ''
+}
+
+// ---- Extract artist from Commons extmetadata ----
+function extractArtist(imageinfo) {
+    const meta = imageinfo.extmetadata || {}
+    return stripHtml(meta.Artist && meta.Artist.value).slice(0, 100) || ''
 }
 
 // ---- Wikimedia Commons multi-subject search (fallback mode) ----
@@ -561,14 +590,16 @@ async function commonsSearchSubjects(theme, count) {
         if (ii && /image\/(jpeg|png)/.test(ii.mime || '')) {
             const thumb = ii.thumburl || ii.url
             if (thumb) {
-                const desc = ii.extmetadata && (ii.extmetadata.ImageDescription || ii.extmetadata.Desc)
-                const descText = desc && desc.value ? desc.value.replace(/<[^>]*>/g, '').trim() : ''
+                const desc = extractDescription(ii)
+                const artist = extractArtist(ii)
                 results.push({
                     imgUrl: thumb,
                     originalUrl: ii.url,
                     title: (p.title || '').replace(/^File:/, '').replace(/\.[^.]+$/, '').replace(/_/g, ' '),
-                    description: descText.slice(0, 200),
-                    sourceTitle: p.title
+                    description: desc,
+                    artist: artist,
+                    sourceTitle: p.title,
+                    descriptionUrl: ii.descriptionurl
                 })
             }
         }
@@ -596,6 +627,55 @@ function extractJSONArray(text) {
 
 function isURL(v) {
     return typeof v === 'string' && /^https?:\/\//i.test(v.trim())
+}
+
+// ---- URL shortener (using GitHub Pages redirect page) ----
+// We compress the share data with LZString-style encoding (using pako if available,
+// or plain base64 for simplicity) and put it in the URL hash.
+// The gallery page reads ?data= (base64 JSON) for share links.
+
+// Simple short link via GitHub Pages: we store data in the hash fragment
+// Gallery reads ?data=<base64> from query string OR #data=<base64> from hash
+async function buildShareLink(items, scene) {
+    const json = JSON.stringify(items)
+    // Use encodeURIComponent + btoa for base64
+    const b64 = btoa(unescape(encodeURIComponent(json)))
+    // Try to shorten via a service that supports CORS
+    const longUrl = GALLERY_URL + '?scene=' + scene + '&data=' + b64
+
+    // Try is.gd (supports CORS, but may be slow in China)
+    // Try tinyurl as fallback
+    // If both fail, return the long URL
+    const shorteners = [
+        async () => {
+            const r = await fetch('https://is.gd/create.php?format=json&url=' + encodeURIComponent(longUrl), {
+                signal: AbortSignal.timeout(6000)
+            })
+            if (r.ok) {
+                const j = await r.json()
+                if (j.shorturl) return j.shorturl
+            }
+            return null
+        },
+        async () => {
+            const r = await fetch('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(longUrl), {
+                signal: AbortSignal.timeout(6000)
+            })
+            if (r.ok) {
+                const text = await r.text()
+                if (text.startsWith('http')) return text.trim()
+            }
+            return null
+        }
+    ]
+
+    for (const fn of shorteners) {
+        try {
+            const short = await fn()
+            if (short) return { url: short, shortened: true, longUrl }
+        } catch {}
+    }
+    return { url: longUrl, shortened: false, longUrl }
 }
 
 // ---- Curate flow ----
@@ -658,6 +738,7 @@ async function curate() {
             addLog(`AI 已生成 ${plan.length} 个展品方案，开始搜索真实图片…`)
             showProgress(30, `正在搜索真实图片 (0/${plan.length})…`)
 
+            // Search images sequentially (Commons API rate limits)
             for (let i = 0; i < plan.length; i++) {
                 const p = plan[i] || {}
                 const idx = i + 1
@@ -675,11 +756,14 @@ async function curate() {
                     continue
                 }
 
+                // Use AI description, fall back to Commons metadata
+                const desc = p.prompt || extractDescription(real.imageinfo) || `${theme} 相关展品`
+
                 items.push({
                     id: `p${idx}`,
                     title: p.title || `展品 ${idx}`,
                     aiModel: p.aiModel || 'Photograph',
-                    prompt: p.prompt || '',
+                    prompt: desc,
                     ...(isURL(p.repoUrl) ? { repoUrl: p.repoUrl.trim() } : {}),
                     imageFile: real.imgUrl,
                     source: real.imgUrl,
@@ -694,42 +778,36 @@ async function curate() {
         } else {
             // Fallback: No AI API, use Wikimedia Commons directly
             addLog('ℹ️ AI 服务不可用，直接从 Wikimedia Commons 搜索…', 'warn')
-            addLog('（不配置 AI Key 也可以正常策展，只是描述来自 Wikipedia 摘要）')
+            addLog('（不配置 AI Key 也可以正常策展，描述来自图片元数据）')
             showProgress(10, `正在搜索「${theme}」相关图片…`)
 
             const results = await commonsSearchSubjects(theme, count)
-            addLog(`找到 ${results.length} 张相关图片，正在获取详细资料…`)
-            showProgress(30, `找到 ${results.length} 张图片，正在获取描述…`)
+            addLog(`找到 ${results.length} 张相关图片，正在整理资料…`)
+            showProgress(40, `正在整理 ${results.length} 件展品资料…`)
 
-            // Fetch Wikipedia descriptions in parallel for speed
-            const wikiPromises = results.map(r =>
-                fetchWikipediaSummary(r.title).catch(() => null)
-            )
-            const wikiInfos = await Promise.all(wikiPromises)
-
+            // No need for parallel Wikipedia fetch — all metadata comes from Commons API
             for (let i = 0; i < results.length; i++) {
                 const r = results[i]
-                const wiki = wikiInfos[i]
                 const idx = i + 1
 
-                const desc = (wiki && wiki.extract) || r.description || `${theme} 相关展品`
-                const repoUrl = (wiki && wiki.contentUrl) ||
-                    `https://commons.wikimedia.org/wiki/${encodeURIComponent(r.sourceTitle)}`
+                const desc = r.description || `${theme} 相关展品`
+                const repoUrl = r.descriptionUrl || `https://commons.wikimedia.org/wiki/${encodeURIComponent(r.sourceTitle)}`
+                const artist = r.artist ? ` — ${r.artist}` : ''
 
                 items.push({
                     id: `p${idx}`,
-                    title: (wiki && wiki.title) || r.title,
+                    title: r.title,
                     aiModel: 'Photograph',
-                    prompt: desc,
+                    prompt: desc + artist,
                     repoUrl: repoUrl,
                     imageFile: r.imgUrl,
                     source: r.imgUrl,
                     sourceTitle: r.sourceTitle,
                     position: POSITIONS[i]
                 })
-                addLog(`(${idx}/${results.length}) ✅ ${(wiki && wiki.title) || r.title}`, 'ok')
+                addLog(`(${idx}/${results.length}) ✅ ${r.title}`, 'ok')
 
-                const pct = 30 + Math.round(((i + 1) / results.length) * 50)
+                const pct = 40 + Math.round(((i + 1) / results.length) * 40)
                 showProgress(pct, `正在整理展品资料 (${idx}/${results.length})…`)
             }
         }
@@ -742,19 +820,26 @@ async function curate() {
 
         // Step 4: Push to gallery
         addLog('正在推送展品到 3D 画廊…')
-        showProgress(90, '正在加载 3D 画廊预览…')
+        showProgress(85, '正在加载 3D 画廊预览…')
         pushToGallery(items, scene)
 
-        // Step 5: Share link
-        const shareData = encodeURIComponent(JSON.stringify(items))
-        const shareUrl = GALLERY_URL + '?scene=' + scene + '&data=' + shareData
-        $('shareLink').value = shareUrl
+        // Step 5: Build share link (with shortening)
+        showProgress(95, '正在生成分享链接…')
+        addLog('正在生成分享链接…')
+        const result = await buildShareLink(items, scene)
+        $('shareLink').value = result.url
         $('resultSection').classList.add('show')
 
-        showProgress(100, '完成！')
+        if (result.shortened) {
+            $('shareHint').textContent = '已生成短链接，可直接分享。'
+            addLog(`✅ 短链接已生成：${result.url}`, 'ok')
+        } else {
+            $('shareHint').textContent = '短链接服务不可用，已生成完整链接（较长但可直接使用）。'
+            addLog('⚠️ 短链接服务不可用，使用完整链接', 'warn')
+        }
         addLog(`✅ 展览已生成！共 ${items.length} 件展品。`, 'ok')
-        addLog('🔗 分享链接已生成，可复制分享。', 'ok')
 
+        showProgress(100, '完成！')
         setTimeout(() => hideProgress(), 2000)
 
     } catch (e) {
@@ -806,6 +891,71 @@ $('copyLink').addEventListener('click', () => {
     setTimeout(() => { $('copyLink').textContent = '复制' }, 2000)
 })
 
+// Shorten button: re-attempt shortening if current link is long
+$('shortenBtn').addEventListener('click', async () => {
+    const current = $('shareLink').value
+    if (!current) return
+
+    // If already shortened, do nothing
+    if (current.length < 100) return
+
+    $('shortenBtn').textContent = '缩短中…'
+    $('shortenBtn').disabled = true
+
+    try {
+        const result = await buildShareLink(
+            // We need items and scene — re-extract from current URL
+            // Actually we can just try to shorten the current URL directly
+            [],
+            ''
+        )
+        // Direct shorten attempt
+        const shorteners = [
+            async () => {
+                const r = await fetch('https://is.gd/create.php?format=json&url=' + encodeURIComponent(current), {
+                    signal: AbortSignal.timeout(8000)
+                })
+                if (r.ok) {
+                    const j = await r.json()
+                    if (j.shorturl) return j.shorturl
+                }
+                return null
+            },
+            async () => {
+                const r = await fetch('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(current), {
+                    signal: AbortSignal.timeout(8000)
+                })
+                if (r.ok) {
+                    const text = await r.text()
+                    if (text.startsWith('http')) return text.trim()
+                }
+                return null
+            }
+        ]
+
+        for (const fn of shorteners) {
+            try {
+                const short = await fn()
+                if (short) {
+                    $('shareLink').value = short
+                    $('shareHint').textContent = '已生成短链接，可直接分享。'
+                    $('shortenBtn').textContent = '已缩短'
+                    addLog(`✅ 短链接已生成：${short}`, 'ok')
+                    return
+                }
+            } catch {}
+        }
+        $('shortenBtn').textContent = '缩短'
+        $('shareHint').textContent = '短链接服务不可用（可能被墙），完整链接仍可使用。'
+        addLog('⚠️ 短链接服务不可用', 'warn')
+    } catch (e) {
+        $('shortenBtn').textContent = '缩短'
+        addLog('⚠️ 缩短失败：' + e.message, 'warn')
+    } finally {
+        $('shortenBtn').disabled = false
+    }
+})
+
 // Settings toggle
 $('settingsToggle').addEventListener('click', () => {
     const toggle = $('settingsToggle')
@@ -822,11 +972,9 @@ $('saveKey').addEventListener('click', () => {
         localStorage.setItem('agnes_api_key', key)
         updateApiKeyStatus()
         addLog('API Key 已保存到浏览器', 'ok')
-        // Re-detect API with the key
         activeApiBase = null
         detectApiBase().then(() => refreshStatus())
     } else {
-        // Clear key
         userApiKey = ''
         localStorage.removeItem('agnes_api_key')
         updateApiKeyStatus()
