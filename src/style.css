@@ -1,0 +1,891 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    background: #f0f0f0;
+    color: #333;
+    overflow: hidden;
+}
+
+/* Special mode for GUI interaction */
+body.gui-mode {
+    cursor: default !important;
+}
+
+body.gui-mode * {
+    cursor: default !important;
+    pointer-events: auto !important;
+}
+
+/* Canvas */
+.webgl {
+    position: fixed;
+    top: 0;
+    left: 0;
+    outline: none;
+}
+
+/* Loading Screen */
+.loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    transition: opacity 0.5s ease;
+}
+
+.loading-container {
+    text-align: center;
+    color: white;
+}
+
+.loading-title {
+    font-size: 3rem;
+    font-weight: 300;
+    margin-bottom: 2rem;
+    letter-spacing: 0.2em;
+}
+
+.loading-bar-container {
+    width: 300px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 2rem auto;
+}
+
+.loading-bar {
+    height: 100%;
+    background: white;
+    width: 0;
+    transition: width 0.3s ease;
+    border-radius: 2px;
+}
+
+.loading-text {
+    font-size: 1.2rem;
+    font-weight: 300;
+    margin-top: 1rem;
+}
+
+.loading-progress {
+    font-size: 2rem;
+    font-weight: 300;
+    margin-top: 1rem;
+    opacity: 0.8;
+}
+
+/* Entry Screen */
+.entry-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+}
+
+.entry-content {
+    text-align: center;
+    color: white;
+    max-width: 600px;
+    padding: 2rem;
+}
+
+.entry-title {
+    font-size: 4rem;
+    font-weight: 300;
+    margin-bottom: 1rem;
+    letter-spacing: 0.2em;
+}
+
+.entry-subtitle {
+    font-size: 1.5rem;
+    font-weight: 300;
+    margin-bottom: 3rem;
+    opacity: 0.8;
+}
+
+.entry-button {
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    font-size: 1.2rem;
+    font-weight: 300;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    letter-spacing: 0.1em;
+    margin-bottom: 2rem;
+}
+
+.entry-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+}
+
+.entry-instructions {
+    font-size: 1rem;
+    opacity: 0.6;
+    line-height: 1.6;
+}
+
+/* Painting Info Panel */
+.painting-info-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.painting-info-content {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    position: relative;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.painting-info-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    font-size: 2rem;
+    cursor: pointer;
+    color: #999;
+    transition: color 0.3s ease;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.painting-info-close:hover {
+    color: #333;
+    background: #f0f0f0;
+}
+
+.painting-info-title {
+    font-size: 2rem;
+    font-weight: 300;
+    margin-bottom: 1rem;
+    color: #333;
+    padding-right: 3rem;
+}
+
+.painting-info-model {
+    font-size: 1.1rem;
+    color: #666;
+    margin-bottom: 1rem;
+    font-style: italic;
+}
+
+.painting-info-prompt {
+    font-size: 1rem;
+    color: #555;
+    line-height: 1.6;
+    padding: 1rem;
+    background: #f8f8f8;
+    border-radius: 10px;
+    border-left: 4px solid #667eea;
+}
+
+/* FPS Counter */
+.fps-counter {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    z-index: 50;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.fps-value {
+    font-weight: bold;
+    color: #4ecdc4;
+}
+
+.fps-label {
+    margin-left: 0.5rem;
+    opacity: 0.7;
+}
+
+/* GUI Toggle Button */
+.gui-toggle-btn {
+    position: fixed;
+    top: 70px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.9), rgba(118, 75, 162, 0.9));
+    border-radius: 25px;
+    cursor: pointer;
+    z-index: 150;
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gui-toggle-btn:hover {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 1), rgba(118, 75, 162, 1));
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 8px 30px rgba(102, 126, 234, 0.5);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.gui-toggle-btn:active {
+    transform: translateY(0) scale(0.95);
+    box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+}
+
+.gui-toggle-icon {
+    font-size: 1.5rem;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+    transition: transform 0.3s ease;
+}
+
+.gui-toggle-btn:hover .gui-toggle-icon {
+    transform: rotate(90deg);
+}
+
+/* Pulsing animation when GUI is hidden */
+.gui-toggle-btn.pulse {
+    animation: pulseGlow 2s infinite;
+}
+
+@keyframes pulseGlow {
+    0%, 100% {
+        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+    }
+    50% {
+        box-shadow: 0 4px 25px rgba(102, 126, 234, 0.6), 0 0 15px rgba(102, 126, 234, 0.3);
+    }
+}
+
+/* lil-gui overrides */
+.lil-gui {
+    --background-color: rgba(15, 15, 25, 0.9) !important;
+    --text-color: #e0e4e8 !important;
+    --title-background-color: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    --title-text-color: white !important;
+    --widget-color: rgba(255, 255, 255, 0.15) !important;
+    --hover-color: rgba(102, 126, 234, 0.4) !important;
+    --focus-color: rgba(102, 126, 234, 0.8) !important;
+    --number-color: #4ecdc4 !important;
+    --string-color: #a8e6cf !important;
+    --folder-title-color: #8892b0 !important;
+    --widget-height: 28px !important;
+    --name-width: 45% !important;
+    backdrop-filter: blur(15px) saturate(180%) !important;
+    border-radius: 15px !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
+                0 0 0 1px rgba(255, 255, 255, 0.05) inset !important;
+    font-family: 'Helvetica Neue', Arial, sans-serif !important;
+    font-size: 12px !important;
+    line-height: 1.4 !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.lil-gui.root {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 100;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(102, 126, 234, 0.5) transparent;
+}
+
+/* Custom scrollbar */
+.lil-gui::-webkit-scrollbar {
+    width: 6px;
+}
+
+.lil-gui::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.lil-gui::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 3px;
+}
+
+.lil-gui::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #764ba2, #667eea);
+}
+
+/* Folder titles styling */
+.lil-gui .title {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.8), rgba(118, 75, 162, 0.8)) !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.5px !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+    border-radius: 8px 8px 0 0 !important;
+    padding: 8px 12px !important;
+    min-height: 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    line-height: 1.3 !important;
+}
+
+/* Controller styling */
+.lil-gui .controller {
+    border-radius: 6px !important;
+    margin: 2px 0 !important;
+    transition: all 0.2s ease !important;
+    min-height: 28px !important;
+    height: auto !important;
+    padding: 4px 8px !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.lil-gui .controller:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+    transform: translateX(2px) !important;
+}
+
+/* Controller name (label) styling */
+.lil-gui .controller .name {
+    line-height: 1.4 !important;
+    padding: 4px 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    min-height: 20px !important;
+}
+
+/* Widget (input/button) styling */
+.lil-gui .controller .widget {
+    display: flex !important;
+    align-items: center !important;
+    min-height: 20px !important;
+}
+
+/* Input field styling */
+.lil-gui input {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 4px !important;
+    color: #e0e4e8 !important;
+    transition: all 0.2s ease !important;
+    min-height: 20px !important;
+    padding: 4px 8px !important;
+    line-height: 1.2 !important;
+    font-size: 11px !important;
+}
+
+.lil-gui input:focus {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border-color: rgba(102, 126, 234, 0.8) !important;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2) !important;
+}
+
+/* Checkbox styling */
+.lil-gui input[type="checkbox"] {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    width: 18px !important;
+    height: 18px !important;
+    min-height: 18px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 2px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 3px !important;
+    position: relative !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+}
+
+.lil-gui input[type="checkbox"]:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border-color: rgba(102, 126, 234, 0.6) !important;
+}
+
+.lil-gui input[type="checkbox"]:checked {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.9), rgba(118, 75, 162, 0.9)) !important;
+    border-color: rgba(102, 126, 234, 1) !important;
+}
+
+.lil-gui input[type="checkbox"]:checked::before {
+    content: "✓" !important;
+    color: white !important;
+    font-size: 12px !important;
+    font-weight: bold !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    line-height: 1 !important;
+    text-align: center !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.lil-gui input[type="checkbox"]:focus {
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.3) !important;
+    outline: none !important;
+}
+
+/* Button styling */
+.lil-gui button {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.8), rgba(118, 75, 162, 0.8)) !important;
+    border: none !important;
+    border-radius: 6px !important;
+    color: white !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer !important;
+    min-height: 20px !important;
+    padding: 4px 12px !important;
+    line-height: 1.2 !important;
+    font-size: 11px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.lil-gui button:hover {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 1), rgba(118, 75, 162, 1)) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3) !important;
+}
+
+/* Color picker styling */
+.lil-gui .color {
+    border-radius: 4px !important;
+    border: 2px solid rgba(255, 255, 255, 0.2) !important;
+    transition: all 0.2s ease !important;
+}
+
+.lil-gui .color:hover {
+    border-color: rgba(102, 126, 234, 0.8) !important;
+    box-shadow: 0 0 8px rgba(102, 126, 234, 0.3) !important;
+}
+
+/* Range slider styling */
+.lil-gui .slider {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 10px !important;
+}
+
+.lil-gui .fill {
+    background: linear-gradient(90deg, #4ecdc4, #44a08d) !important;
+    border-radius: 10px !important;
+}
+
+/* Dropdown styling */
+.lil-gui select {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 4px !important;
+    color: #e0e4e8 !important;
+    min-height: 20px !important;
+    padding: 2px 8px !important;
+    line-height: 1.2 !important;
+    font-size: 11px !important;
+}
+
+/* Folder content padding */
+.lil-gui .children {
+    padding: 4px 0 !important;
+}
+
+/* Folder title padding and height */
+.lil-gui .folder > .title {
+    min-height: 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    padding: 6px 12px !important;
+}
+
+/* Disabled elements */
+.lil-gui .controller.disabled {
+    opacity: 0.5 !important;
+    pointer-events: none !important;
+}
+
+/* Hover effects for the entire GUI */
+.lil-gui.root:hover {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4),
+                0 0 0 1px rgba(255, 255, 255, 0.08) inset !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .entry-title {
+        font-size: 2.5rem;
+    }
+
+    .entry-subtitle {
+        font-size: 1.2rem;
+    }
+
+    .loading-title {
+        font-size: 2rem;
+    }
+
+    .painting-info-content {
+        padding: 1.5rem;
+        margin: 1rem;
+    }
+
+    .fps-counter {
+        top: 10px;
+        right: 10px;
+        font-size: 0.8rem;
+        padding: 0.4rem 0.8rem;
+    }
+
+    .gui-toggle-btn {
+        top: 55px;
+        right: 10px;
+        width: 45px;
+        height: 45px;
+    }
+
+    .gui-toggle-icon {
+        font-size: 1.3rem;
+    }
+
+    .lil-gui.root {
+        top: 10px;
+        left: 10px;
+        font-size: 0.8rem;
+        width: 280px !important;
+        max-height: calc(100vh - 120px);
+    }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+    .lil-gui.root {
+        width: calc(100vw - 20px) !important;
+        max-width: 300px !important;
+        left: 10px;
+        right: 10px;
+    }
+
+    .gui-toggle-btn {
+        width: 40px;
+        height: 40px;
+        top: 50px;
+    }
+
+    .gui-toggle-icon {
+        font-size: 1.1rem;
+    }
+}
+
+/* Hide scrollbars */
+::-webkit-scrollbar {
+    display: none;
+}
+
+html {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Easel Modal Styles */
+.easel-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.easel-modal-overlay.show {
+    opacity: 1;
+}
+
+.easel-modal-dialog {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    position: relative;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    transform: translateY(20px);
+    transition: transform 0.2s ease;
+}
+
+.easel-modal-dialog.show {
+    transform: translateY(0);
+}
+
+.easel-modal-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    font-size: 2rem;
+    cursor: pointer;
+    color: #999;
+    transition: color 0.3s ease;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.easel-modal-close:hover {
+    color: #333;
+    background: #f0f0f0;
+}
+
+.easel-modal-btn {
+    flex: 1;
+    padding: 15px 30px;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 300;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    letter-spacing: 0.05em;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+
+.easel-modal-btn:hover {
+    transform: translateY(-2px);
+}
+
+.easel-modal-btn-primary {
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    color: white;
+}
+
+.easel-modal-btn-primary:hover {
+    box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+}
+
+.easel-modal-btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.easel-modal-btn-secondary:hover {
+    box-shadow: 0 5px 15px rgba(108, 117, 125, 0.3);
+}
+
+#prompt-input {
+    width: 100%;
+    height: 120px;
+    padding: 15px;
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    font-size: 16px;
+    resize: vertical;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease;
+    outline: none;
+}
+
+#prompt-input:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.easel-modal-buttons {
+    display: flex;
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.easel-modal-title {
+    margin-top: 0;
+    color: #333;
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 300;
+    letter-spacing: 0.1em;
+}
+
+.easel-modal-description {
+    color: #666;
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 1.1rem;
+    opacity: 0.8;
+}
+
+/* Scene Selector */
+.scene-selector {
+    position: fixed;
+    top: 20px;
+    right: 80px;
+    z-index: 1000;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+
+.scene-selector-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.95);
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 500;
+    color: #333;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.scene-selector-toggle:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
+}
+
+.scene-selector-menu {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    min-width: 180px;
+    background: rgba(255, 255, 255, 0.98);
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(20px);
+    overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+}
+
+.scene-selector-menu.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.scene-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 14px 18px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 14px;
+    color: #333;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.scene-option:hover {
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.scene-option.active {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+    color: #667eea;
+    font-weight: 600;
+}
+
+.scene-option.active::before {
+    content: '✓';
+    position: absolute;
+    right: 15px;
+    color: #667eea;
+}
+
+.scene-icon {
+    font-size: 20px;
+}
+
+.scene-name {
+    flex: 1;
+}
+
+@media (max-width: 768px) {
+    .scene-selector {
+        top: 15px;
+        right: 15px;
+    }
+
+    .scene-selector-toggle {
+        padding: 10px 16px;
+        font-size: 14px;
+    }
+
+    .scene-selector-label {
+        display: none;
+    }
+
+    .scene-selector-menu {
+        min-width: 160px;
+    }
+}

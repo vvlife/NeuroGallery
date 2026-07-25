@@ -1,0 +1,92 @@
+[
+    {
+        "id": "p1",
+        "title": "阿波罗11号登月舱",
+        "aiModel": "Artifact",
+        "prompt": "鹰号登月舱是首个将人类送上月球表面的航天器，于1969年7月20日成功着陆静海基地。其设计仅能容纳两名宇航员，展现了早期太空探索工程的极限与辉煌。",
+        "repoUrl": "https://zh.wikipedia.org/wiki/%E9%B9%B0%E8%99%9F",
+        "imageFile": "textures/paintings/picture1.jpg",
+        "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Aldrin_Apollo_11.jpg/1280px-Aldrin_Apollo_11.jpg",
+        "sourceTitle": "File:Aldrin Apollo 11.jpg",
+        "position": [
+            -6,
+            3.5,
+            -11.8
+        ]
+    },
+    {
+        "id": "p2",
+        "title": "旅行者1号探测器",
+        "aiModel": "Spacecraft",
+        "prompt": "旅行者1号是人类发射的最遥远的人造物体，携带着记录地球声音与图像的“金唱片”。它目前正穿越星际空间，向银河系中心方向前行。",
+        "repoUrl": "https://zh.wikipedia.org/wiki/%E6%97%85%E8%A1%8C%E8%80%851%E8%99%9F",
+        "imageFile": "textures/paintings/picture2.jpg",
+        "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/Jupiter_and_Io_as_seen_by_Voyager_1.jpg/1280px-Jupiter_and_Io_as_seen_by_Voyager_1.jpg",
+        "sourceTitle": "File:Jupiter and Io as seen by Voyager 1.jpg",
+        "position": [
+            0,
+            3.5,
+            -11.8
+        ]
+    },
+    {
+        "id": "p3",
+        "title": "哈勃空间望远镜",
+        "aiModel": "Telescope",
+        "prompt": "哈勃空间望远镜自1990年部署以来，彻底改变了我们对宇宙的理解。它位于地球大气层之上，提供了极高清晰度的深空图像，如著名的“创生之柱”。",
+        "repoUrl": "https://zh.wikipedia.org/wiki/%E5%93%88%E4%BC%AF%E7%A9%BA%E9%97%B4%E6%9C%9B%E8%BF%9C%E9%95%9C",
+        "imageFile": "textures/paintings/picture3.jpg",
+        "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Starburst_in_NGC_4449_%28captured_by_the_Hubble_Space_Telescope%29.jpg/1280px-Starburst_in_NGC_4449_%28captured_by_the_Hubble_Space_Telescope%29.jpg",
+        "sourceTitle": "File:Starburst in NGC 4449 (captured by the Hubble Space Telescope).jpg",
+        "position": [
+            6,
+            3.5,
+            -11.8
+        ]
+    },
+    {
+        "id": "p4",
+        "title": "国际空间站",
+        "aiModel": "Satellite image",
+        "prompt": "国际空间站是轨道上最大的国际合作项目，由多国共同建造和运营。它作为微重力环境下的实验室，持续进行着各类科学实验和技术测试。",
+        "repoUrl": "https://zh.wikipedia.org/wiki/%E5%9B%BD%E9%99%85%E7%A9%BA%E9%97%B4%E7%AB%99",
+        "imageFile": "textures/paintings/picture4.jpg",
+        "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/ISS_Aug2005.jpg/1280px-ISS_Aug2005.jpg",
+        "sourceTitle": "File:ISS Aug2005.jpg",
+        "position": [
+            -6,
+            3.5,
+            11.8
+        ]
+    },
+    {
+        "id": "p5",
+        "title": "先驱者10号",
+        "aiModel": "Photograph",
+        "prompt": "先驱者10号是第一个穿越小行星带并近距离观测木星的探测器。它携带的镀金铝板向可能存在的外星智慧生命展示了人类的形象和位置。",
+        "repoUrl": "https://zh.wikipedia.org/wiki/%E5%85%88%E9%A9%B1%E8%80%8510%E5%8F%B7",
+        "imageFile": "textures/paintings/picture5.jpg",
+        "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Pioneer10-plaque.jpg/1280px-Pioneer10-plaque.jpg",
+        "sourceTitle": "File:Pioneer10-plaque.jpg",
+        "position": [
+            0,
+            3.5,
+            11.8
+        ]
+    },
+    {
+        "id": "p6",
+        "title": "詹姆斯·韦伯空间望远镜",
+        "aiModel": "Satellite image",
+        "prompt": "詹姆斯·韦伯空间望远镜是目前最强大的太空望远镜，主要工作在红外波段。它旨在观测宇宙早期的星系形成以及系外行星的大气成分。",
+        "repoUrl": "https://zh.wikipedia.org/wiki/%E7%BA%A6%E7%BF%B0%C2%B7%E9%9F%A6%E4%BC%AF%E7%A9%BA%E9%97%B4%E6%9C%9B%E8%BF%9C%E9%95%9C",
+        "imageFile": "textures/paintings/picture6.jpg",
+        "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/James_Webb_Space_Telescope_Mirror37.jpg/1280px-James_Webb_Space_Telescope_Mirror37.jpg",
+        "sourceTitle": "File:James Webb Space Telescope Mirror37.jpg",
+        "position": [
+            6,
+            3.5,
+            11.8
+        ]
+    }
+]

@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI 策展台 · Exhibition Curator</title>
+    <style>
+        :root {
+            --bg: #0e0f13;
+            --panel: #171922;
+            --panel-2: #1f2230;
+            --accent: #7c5cff;
+            --accent-2: #36d1c4;
+            --text: #e7e9f0;
+            --muted: #9aa0b4;
+            --border: #2a2e3e;
+            --ok: #3ddc84;
+            --err: #ff6b6b;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: radial-gradient(1200px 600px at 70% -10%, #1c2030 0%, var(--bg) 60%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        header {
+            padding: 28px 32px 12px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        header h1 { font-size: 22px; margin: 0; letter-spacing: .5px; }
+        header .dot {
+            width: 12px; height: 12px; border-radius: 50%;
+            background: var(--accent); box-shadow: 0 0 16px var(--accent);
+        }
+        header .sub { color: var(--muted); font-size: 13px; margin-left: auto; }
+        .wrap { display: grid; grid-template-columns: 380px 1fr; gap: 20px; padding: 16px 32px 40px; }
+        @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } }
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+        }
+        label { display: block; font-size: 13px; color: var(--muted); margin: 0 0 8px 2px; }
+        textarea, select, input[type="number"] {
+            width: 100%;
+            background: var(--panel-2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 15px;
+            outline: none;
+            resize: vertical;
+            font-family: inherit;
+        }
+        textarea:focus, select:focus { border-color: var(--accent); }
+        .row { display: flex; gap: 14px; margin-top: 16px; }
+        .row > div { flex: 1; }
+        button {
+            margin-top: 18px;
+            width: 100%;
+            border: none;
+            border-radius: 12px;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            cursor: pointer;
+            transition: transform .08s ease, opacity .2s;
+        }
+        button:hover { opacity: .94; }
+        button:active { transform: translateY(1px); }
+        button:disabled { opacity: .5; cursor: not-allowed; }
+        .log {
+            margin-top: 4px;
+            height: 220px;
+            overflow-y: auto;
+            background: #0b0c10;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 12.5px;
+            line-height: 1.7;
+            color: var(--muted);
+        }
+        .log .line { white-space: pre-wrap; }
+        .log .ok { color: var(--ok); }
+        .log .err { color: var(--err); }
+        .status { display: flex; gap: 10px; margin-bottom: 12px; }
+        .pill {
+            font-size: 12px; padding: 5px 10px; border-radius: 999px;
+            border: 1px solid var(--border); color: var(--muted);
+        }
+        .pill.on { color: var(--ok); border-color: #1f5a3a; background: #102017; }
+        .pill.off { color: var(--err); border-color: #5a1f1f; background: #201010; }
+        .preview {
+            margin-top: 12px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            background: #000;
+            height: 460px;
+            position: relative;
+        }
+        .preview iframe { width: 100%; height: 100%; border: 0; display: none; }
+        .preview .placeholder {
+            position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            color: var(--muted); font-size: 14px; text-align: center; padding: 20px;
+        }
+        .preview.show iframe { display: block; }
+        .preview.show .placeholder { display: none; }
+        .openlink { color: var(--accent-2); text-decoration: none; font-size: 13px; }
+        .hint { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.6; }
+        .examples { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+        .chip {
+            font-size: 12px; padding: 6px 10px; border-radius: 999px; cursor: pointer;
+            border: 1px solid var(--border); color: var(--muted); background: var(--panel-2);
+        }
+        .chip:hover { color: var(--text); border-color: var(--accent); }
+    </style>
+</head>
+<body>
+<header>
+    <span class="dot"></span>
+    <h1>AI 策展台 · Exhibition Curator</h1>
+    <span class="sub">输入主题 → 文字 AI 整理真实资料 + 从 Wikimedia Commons 搜索真实图片 → 自动改写画廊配置并启动</span>
+</header>
+
+<div class="wrap">
+    <div class="card">
+        <label for="theme">展览主题</label>
+        <textarea id="theme" rows="3" placeholder="例如：太空探索、印象派绘画、中国古建筑、深海生物、赛博朋克城市…"></textarea>
+
+        <div class="examples" id="examples">
+            <span class="chip">太空探索</span>
+            <span class="chip">印象派绘画</span>
+            <span class="chip">中国古建筑</span>
+            <span class="chip">深海生物</span>
+            <span class="chip">赛博朋克城市</span>
+            <span class="chip">文艺复兴艺术</span>
+        </div>
+
+        <div class="row">
+            <div>
+                <label for="count">展品数量</label>
+                <select id="count">
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                    <option value="6" selected>6</option>
+                </select>
+            </div>
+            <div>
+                <label for="lang">文案语言</label>
+                <select id="lang">
+                    <option value="中文" selected>中文</option>
+                    <option value="English">English</option>
+                </select>
+            </div>
+        </div>
+
+        <button id="go">🔍 策划展览</button>
+        <p class="hint">
+            点击后本页会调用现有后端：文字 AI 基于真实公开事实整理展品资料（名称、简介、真实链接），
+            图片则从 <b>Wikimedia Commons</b> 真实图库搜索并下载（<b>不使用 AI 生成的假图</b>）。
+            随后自动改写 <code>painting_data.json</code>、热重载右侧的 3D 画廊。
+            原配置会备份为 <code>painting_data.backup.json</code>。
+        </p>
+    </div>
+
+    <div class="card">
+        <div class="status">
+            <span class="pill" id="pill-backend">后端：检测中…</span>
+            <span class="pill" id="pill-gallery">画廊：检测中…</span>
+            <a class="openlink" id="openlink" href="http://localhost:5173" target="_blank" rel="noreferrer" style="margin-left:auto;align-self:center;">在新标签打开画廊 ↗</a>
+        </div>
+        <div class="log" id="log"></div>
+        <div class="preview" id="preview">
+            <div class="placeholder">展览生成后，这里会实时加载 3D 画廊预览。</div>
+            <iframe id="galleryFrame" src="http://localhost:5173"></iframe>
+<script>
+// Decide API + gallery base from how the page is served.
+// - Served under /curator (via the Vite gallery origin on :5173): use
+//   /curator-api for the API and the same-origin gallery.
+// - Served standalone on :4000: use /api and the gallery on :5173.
+const ON_CURATOR_ROUTE = location.pathname.startsWith('/curator')
+const API_BASE = ON_CURATOR_ROUTE ? '/curator-api' : '/api'
+const GALLERY_BASE = (location.port === '5173' || ON_CURATOR_ROUTE) ? '/' : 'http://localhost:5173'
+</script>
+        </div>
+    </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id)
+const logEl = $('log')
+const preview = $('preview')
+const frame = $('galleryFrame')
+
+function addLog(msg, cls) {
+    const div = document.createElement('div')
+    div.className = 'line' + (cls ? ' ' + cls : '')
+    div.textContent = msg
+    logEl.appendChild(div)
+    logEl.scrollTop = logEl.scrollHeight
+}
+
+async function refreshStatus() {
+    try {
+        const r = await fetch(API_BASE + '/status')
+        const s = await r.json()
+        const b = $('pill-backend'), g = $('pill-gallery')
+        b.textContent = '后端：' + (s.backend ? '已连接' : '未连接')
+        b.className = 'pill ' + (s.backend ? 'on' : 'off')
+        g.textContent = '画廊：' + (s.gallery ? '运行中' : '未运行')
+        g.className = 'pill ' + (s.gallery ? 'on' : 'off')
+    } catch {
+        $('pill-backend').textContent = '后端：未知'
+        $('pill-gallery').textContent = '画廊：未知'
+    }
+}
+
+$('examples').addEventListener('click', (e) => {
+    if (e.target.classList.contains('chip')) {
+        $('theme').value = e.target.textContent
+    }
+})
+
+$('go').addEventListener('click', async () => {
+    const theme = $('theme').value.trim()
+    if (!theme) { alert('请先输入展览主题'); return }
+    const btn = $('go')
+    btn.disabled = true
+    logEl.innerHTML = ''
+    addLog('开始策划「' + theme + '」…')
+    try {
+        const resp = await fetch(API_BASE + '/curate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                theme,
+                count: parseInt($('count').value, 10),
+                language: $('lang').value
+            })
+        })
+        const reader = resp.body.getReader()
+        const dec = new TextDecoder()
+        let buf = ''
+        while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            buf += dec.decode(value, { stream: true })
+            const lines = buf.split('\n')
+            buf = lines.pop()
+            for (const line of lines) {
+                if (!line.trim()) continue
+                let obj
+                try { obj = JSON.parse(line) } catch { continue }
+                if (obj.type === 'error') addLog('❌ ' + obj.message, 'err')
+                else if (obj.type === 'done') {
+                    addLog('✅ ' + obj.message, 'ok')
+                    if (obj.ok) {
+                        preview.classList.add('show')
+                        frame.src = GALLERY_BASE + '?t=' + Date.now()
+                    }
+                } else addLog(obj.message || '')
+            }
+        }
+    } catch (e) {
+        addLog('❌ 请求失败：' + e.message, 'err')
+    } finally {
+        btn.disabled = false
+        refreshStatus()
+    }
+})
+
+// Initialise gallery preview + external link to match the current origin.
+$('galleryFrame').src = GALLERY_BASE
+$('openlink').href = GALLERY_BASE
+
+refreshStatus()
+setInterval(refreshStatus, 8000)
+</script>
+</body>
+</html>

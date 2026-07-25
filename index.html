@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Neuro-Gallery: AI Art Exhibition</title>
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen">
+        <div class="loading-container">
+            <h1 class="loading-title">Neuro-Gallery</h1>
+            <div class="loading-bar-container">
+                <div class="loading-bar"></div>
+            </div>
+            <p class="loading-text">Loading Assets...</p>
+            <div class="loading-progress">0%</div>
+        </div>
+    </div>
+
+    <!-- Painting Info Panel -->
+    <div class="painting-info-panel">
+        <div class="painting-info-content">
+            <button class="painting-info-close">&times;</button>
+            <h2 class="painting-info-title"></h2>
+            <p class="painting-info-model"></p>
+            <p class="painting-info-prompt"></p>
+        </div>
+    </div>
+
+    <!-- Entry Screen -->
+    <div class="entry-screen">
+        <div class="entry-content">
+            <h1 class="entry-title">Neuro-Gallery</h1>
+            <p class="entry-subtitle">An AI Art Exhibition</p>
+            <button class="entry-button">Enter Gallery</button>
+            <p class="entry-instructions">Use WASD to move, Mouse to look around, Space to jump, Shift to sprint</p>
+        </div>
+    </div>
+
+    <!-- FPS Counter -->
+    <div class="fps-counter">
+        <span class="fps-value">0</span>
+        <span class="fps-label">FPS</span>
+    </div>
+
+    <!-- GUI Toggle Button -->
+    <button class="gui-toggle-btn" id="guiToggleBtn" title="Toggle Controls Panel (G)">
+        <span class="gui-toggle-icon">⚙️</span>
+    </button>
+
+    <!-- Scene Selector -->
+    <div class="scene-selector" id="sceneSelector">
+        <button class="scene-selector-toggle" id="sceneSelectorToggle" title="切换场景">
+            <span>🎨</span>
+            <span class="scene-selector-label">场景</span>
+        </button>
+        <div class="scene-selector-menu" id="sceneSelectorMenu">
+            <button class="scene-option active" data-scene="gallery">
+                <span class="scene-icon">🏛️</span>
+                <span class="scene-name">经典画廊</span>
+            </button>
+            <button class="scene-option" data-scene="animalCrossing">
+                <span class="scene-icon">🌿</span>
+                <span class="scene-name">动森花园</span>
+            </button>
+            <button class="scene-option" data-scene="space">
+                <span class="scene-icon">🚀</span>
+                <span class="scene-name">太空站</span>
+            </button>
+            <button class="scene-option" data-scene="cyberpunk">
+                <span class="scene-icon">🌃</span>
+                <span class="scene-name">赛博朋克</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Three.js Canvas -->
+    <canvas class="webgl"></canvas>
+
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>

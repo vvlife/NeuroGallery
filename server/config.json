@@ -1,0 +1,4 @@
+{
+    "baseURL": "https://apihub.agnes-ai.com/v1",
+    "imageModel": "agnes-image-2.1-flash"
+}
