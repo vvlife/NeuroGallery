@@ -16,6 +16,7 @@
             --border: #2a2e3e;
             --ok: #3ddc84;
             --err: #ff6b6b;
+            --warn: #ffc857;
         }
         * { box-sizing: border-box; }
         body {
@@ -105,6 +106,7 @@
         .log .line { white-space: pre-wrap; }
         .log .ok { color: var(--ok); }
         .log .err { color: var(--err); }
+        .log .warn { color: var(--warn); }
         .status { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
         .pill {
             font-size: 12px; padding: 5px 10px; border-radius: 999px;
@@ -170,34 +172,53 @@
             border-radius: 8px;
             white-space: nowrap;
         }
-        .mode-tabs {
-            display: flex;
-            gap: 8px;
-            margin-top: 16px;
-            margin-bottom: 0;
-        }
-        .mode-tab {
-            padding: 8px 14px;
-            border-radius: 8px 8px 0 0;
-            font-size: 13px;
-            cursor: pointer;
-            border: 1px solid var(--border);
-            border-bottom: none;
-            color: var(--muted);
-            background: transparent;
-        }
-        .mode-tab.active {
-            color: var(--text);
+        /* Progress bar */
+        .progress-bar {
+            margin-top: 12px;
+            height: 6px;
             background: var(--panel-2);
-            border-color: var(--accent);
-        }
-        .mode-panel {
+            border-radius: 3px;
+            overflow: hidden;
             display: none;
-            padding: 16px 0;
         }
-        .mode-panel.active { display: block; }
-        .field-group { margin-top: 12px; }
-        .field-group input {
+        .progress-bar.show { display: block; }
+        .progress-bar .fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            border-radius: 3px;
+            transition: width .3s ease;
+            width: 0%;
+        }
+        .progress-label {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 6px;
+            text-align: center;
+        }
+        /* API key settings */
+        .settings-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+        .settings-toggle {
+            font-size: 13px;
+            color: var(--muted);
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .settings-toggle:hover { color: var(--text); }
+        .settings-toggle .arrow { transition: transform .2s; }
+        .settings-toggle.open .arrow { transform: rotate(90deg); }
+        .settings-body {
+            display: none;
+            margin-top: 12px;
+        }
+        .settings-body.open { display: block; }
+        .settings-body input {
             width: 100%;
             background: var(--panel-2);
             border: 1px solid var(--border);
@@ -206,16 +227,46 @@
             padding: 10px;
             font-size: 13px;
             outline: none;
+            font-family: ui-monospace, monospace;
         }
-        .field-group input:focus { border-color: var(--accent); }
-        .field-group .field-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+        .settings-body input:focus { border-color: var(--accent); }
+        .settings-body .field-hint {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 4px;
+            line-height: 1.5;
+        }
+        .settings-body .field-hint b { color: var(--warn); }
+        .settings-row {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+        .settings-row input { flex: 1; }
+        .settings-row button {
+            width: auto;
+            margin-top: 0;
+            padding: 10px 14px;
+            font-size: 13px;
+            border-radius: 8px;
+            white-space: nowrap;
+        }
+        .api-status-mini {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            margin-left: 8px;
+            white-space: nowrap;
+        }
+        .api-status-mini.on { color: var(--ok); background: rgba(61, 220, 132, 0.1); }
+        .api-status-mini.off { color: var(--muted); background: rgba(154, 160, 180, 0.1); }
     </style>
 </head>
 <body>
 <header>
     <span class="dot"></span>
     <h1>AI 策展台 · Exhibition Curator</h1>
-    <span class="sub">输入主题 → AI 整理真实资料 + 从 Wikimedia Commons 搜索真实图片 → 直接预览</span>
+    <span class="sub">输入主题 → 从 Wikimedia Commons 搜索真实图片 → 直接预览</span>
 </header>
 
 <div class="wrap">
@@ -264,12 +315,39 @@
         </div>
 
         <button id="go">🔍 策划展览</button>
+
+        <div class="progress-bar" id="progressBar">
+            <div class="fill" id="progressFill"></div>
+        </div>
+        <div class="progress-label" id="progressLabel" style="display:none;"></div>
+
         <p class="hint">
-            点击后：① 文字 AI 基于真实公开事实整理展品资料（名称、简介、真实链接），
-            ② 图片从 <b>Wikimedia Commons</b> 真实图库搜索（<b>不使用 AI 生成的假图</b>），
-            ③ 展品数据通过 <code>postMessage</code> 直接推送到右侧 3D 画廊预览。
-            所有操作在浏览器中完成，无需部署后端。
+            点击后从 <b>Wikimedia Commons</b> 真实图库搜索图片，
+            通过 <code>postMessage</code> 直接推送到右侧 3D 画廊预览。
+            所有操作在浏览器中完成，无需后端。
         </p>
+
+        <!-- API Key Settings -->
+        <div class="settings-section">
+            <div class="settings-toggle" id="settingsToggle">
+                <span class="arrow">▶</span>
+                <span>AI 增强（可选）</span>
+                <span class="api-status-mini off" id="apiStatusMini">未配置</span>
+            </div>
+            <div class="settings-body" id="settingsBody">
+                <label for="apiKey" style="margin-bottom:6px;">Agnes AI API Key</label>
+                <div class="settings-row">
+                    <input id="apiKey" type="password" placeholder="agnes-xxxxxxxxxxxxxxxx" />
+                    <button id="saveKey" class="btn-secondary">保存</button>
+                </div>
+                <p class="field-hint">
+                    配置后，AI 会帮你策划展览方案（展品名称、描述、搜索词），效果更好。<br>
+                    <b>不配置也能用</b>——直接从 Wikimedia Commons 搜索图片，用 Wikipedia 摘要作为描述。<br>
+                    API Key 仅保存在浏览器 localStorage 中，不会上传到任何服务器。
+                    获取地址：https://www.agnes-ai.com/
+                </p>
+            </div>
+        </div>
 
         <div class="result-section" id="resultSection">
             <h3>📎 分享链接</h3>
@@ -278,7 +356,7 @@
                 <button id="copyLink" class="btn-secondary">复制</button>
             </div>
             <p class="hint" style="margin-top:8px;">
-                此链接包含完整展品数据，打开即可查看展览。也可以在浏览器中直接使用。
+                此链接包含完整展品数据，打开即可查看展览。
             </p>
         </div>
     </div>
@@ -302,21 +380,39 @@ const $ = (id) => document.getElementById(id)
 const logEl = $('log')
 const preview = $('preview')
 const frame = $('galleryFrame')
+const progressBar = $('progressBar')
+const progressFill = $('progressFill')
+const progressLabel = $('progressLabel')
 
 // ---- Configuration ----
-// Gallery is hosted on GitHub Pages (static)
 const GALLERY_URL = 'https://vvlife.github.io/NeuroGallery/'
 
-// AI text API: try local backend first (for dev), then Vercel deployment
+// AI text API endpoints (try in order)
 const API_BASES = [
-    // Local backend for development
     'http://localhost:3001/api',
-    // Vercel serverless function (deployed, may be slow/blocked in some regions)
     'https://neurogallery-umber.vercel.app/api'
 ]
 
 let activeApiBase = null
+let userApiKey = localStorage.getItem('agnes_api_key') || ''
 
+// ---- Progress bar helpers ----
+function showProgress(percent, label) {
+    progressBar.classList.add('show')
+    progressFill.style.width = percent + '%'
+    if (label) {
+        progressLabel.style.display = 'block'
+        progressLabel.textContent = label
+    }
+}
+
+function hideProgress() {
+    progressBar.classList.remove('show')
+    progressFill.style.width = '0%'
+    progressLabel.style.display = 'none'
+}
+
+// ---- Logging ----
 function addLog(msg, cls) {
     const div = document.createElement('div')
     div.className = 'line' + (cls ? ' ' + cls : '')
@@ -325,16 +421,32 @@ function addLog(msg, cls) {
     logEl.scrollTop = logEl.scrollHeight
 }
 
+// ---- API key UI ----
+function updateApiKeyStatus() {
+    const mini = $('apiStatusMini')
+    if (userApiKey) {
+        mini.textContent = '已配置'
+        mini.className = 'api-status-mini on'
+    } else {
+        mini.textContent = '未配置'
+        mini.className = 'api-status-mini off'
+    }
+}
+
 // ---- API detection ----
 async function detectApiBase() {
+    // If user has a personal API key, we can use any API base (they all proxy to the same upstream)
     for (const base of API_BASES) {
         try {
             const r = await fetch(base + '/health', { signal: AbortSignal.timeout(5000) })
             if (r.ok) {
                 const s = await r.json()
-                if (s.ok && s.hasKey) {
-                    activeApiBase = base
-                    return base
+                if (s.ok) {
+                    // If the server has its own key, or user provided a key, we're good
+                    if (s.hasKey || userApiKey) {
+                        activeApiBase = base
+                        return base
+                    }
                 }
             }
         } catch {}
@@ -346,7 +458,6 @@ async function refreshStatus() {
     const pillApi = $('pill-api')
     const pillGallery = $('pill-gallery')
 
-    // Check AI API
     if (!activeApiBase) {
         await detectApiBase()
     }
@@ -354,11 +465,10 @@ async function refreshStatus() {
         pillApi.textContent = 'AI 服务：已连接'
         pillApi.className = 'pill on'
     } else {
-        pillApi.textContent = 'AI 服务：未连接'
+        pillApi.textContent = 'AI 服务：未连接（仍可策展）'
         pillApi.className = 'pill off'
     }
 
-    // Check gallery (always online on GitHub Pages)
     try {
         const r = await fetch(GALLERY_URL, { method: 'HEAD', signal: AbortSignal.timeout(5000) })
         pillGallery.textContent = '画廊：' + (r.ok ? '在线' : '离线')
@@ -369,18 +479,24 @@ async function refreshStatus() {
     }
 }
 
-// ---- AI text generation ----
+// ---- AI text generation (with user API key support) ----
 async function generateText(prompt, system) {
     if (!activeApiBase) {
         const found = await detectApiBase()
         if (!found) {
-            throw new Error('AI 服务不可用。请配置 AGNES_API_KEY 环境变量后部署到 Vercel，或在本地运行后端服务。')
+            throw new Error('AI 服务不可用')
         }
+    }
+
+    const headers = { 'Content-Type': 'application/json' }
+    // If user has a personal API key, pass it in the header
+    if (userApiKey) {
+        headers['X-User-Api-Key'] = userApiKey
     }
 
     const r = await fetch(activeApiBase + '/generate-text', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ prompt, system })
     })
     const j = await r.json()
@@ -388,14 +504,14 @@ async function generateText(prompt, system) {
     return j.text
 }
 
-// ---- Wikimedia Commons image search (pure client-side, CORS supported) ----
+// ---- Wikimedia Commons image search ----
 async function searchCommonsImage(query) {
     const url =
         'https://commons.wikimedia.org/w/api.php?action=query' +
         '&generator=search&gsrsearch=' + encodeURIComponent(query) +
         '&gsrnamespace=6&gsrlimit=10' +
         '&prop=imageinfo&iiprop=url|mime|size&iiurlwidth=1200&format=json' +
-        '&origin=*' // CORS support
+        '&origin=*'
 
     const r = await fetch(url)
     if (!r.ok) throw new Error(`Commons API ${r.status}`)
@@ -411,7 +527,7 @@ async function searchCommonsImage(query) {
     return null
 }
 
-// ---- Wikipedia summary fetch (for fallback descriptions, CORS supported) ----
+// ---- Wikipedia summary fetch ----
 async function fetchWikipediaSummary(query) {
     const url =
         'https://en.wikipedia.org/api/rest_v1/page/summary/' +
@@ -426,9 +542,8 @@ async function fetchWikipediaSummary(query) {
     }
 }
 
-// ---- Wikimedia Commons search for multiple subjects (fallback mode) ----
+// ---- Wikimedia Commons multi-subject search (fallback mode) ----
 async function commonsSearchSubjects(theme, count) {
-    // Search for files related to the theme on Wikimedia Commons
     const url =
         'https://commons.wikimedia.org/w/api.php?action=query' +
         '&generator=search&gsrsearch=' + encodeURIComponent(theme) +
@@ -446,7 +561,6 @@ async function commonsSearchSubjects(theme, count) {
         if (ii && /image\/(jpeg|png)/.test(ii.mime || '')) {
             const thumb = ii.thumburl || ii.url
             if (thumb) {
-                // Try to get description from extmetadata
                 const desc = ii.extmetadata && (ii.extmetadata.ImageDescription || ii.extmetadata.Desc)
                 const descText = desc && desc.value ? desc.value.replace(/<[^>]*>/g, '').trim() : ''
                 results.push({
@@ -484,7 +598,7 @@ function isURL(v) {
     return typeof v === 'string' && /^https?:\/\//i.test(v.trim())
 }
 
-// ---- Curate flow (pure client-side) ----
+// ---- Curate flow ----
 const POSITIONS = [
     [-6, 3.5, -11.8],
     [0, 3.5, -11.8],
@@ -500,7 +614,9 @@ async function curate() {
 
     const btn = $('go')
     btn.disabled = true
+    btn.textContent = '策划中…'
     logEl.innerHTML = ''
+    hideProgress()
     addLog('开始策划「' + theme + '」…')
 
     const count = parseInt($('count').value, 10)
@@ -513,14 +629,14 @@ async function curate() {
         if (!activeApiBase) {
             await detectApiBase()
         }
-        
-        let items = []
-        
-        if (activeApiBase) {
-            addLog('✅ AI 服务已连接：' + activeApiBase, 'ok')
 
-            // Step 2: AI curate
-            addLog('调用文字 AI 策划展览方案…')
+        let items = []
+
+        if (activeApiBase) {
+            addLog('✅ AI 服务已连接，开始策划方案…', 'ok')
+            showProgress(5, 'AI 正在策划展览方案…')
+
+            // AI mode
             const system =
                 'You are an expert museum/gallery curator. Given a theme, you design a ' +
                 'coherent, engaging exhibition using REAL, well-known subjects only. ' +
@@ -539,23 +655,23 @@ async function curate() {
 
             const text = await generateText(userPrompt, system)
             const plan = extractJSONArray(text).slice(0, count)
-            addLog(`已生成 ${plan.length} 个展品方案，开始搜索真实图片…`)
+            addLog(`AI 已生成 ${plan.length} 个展品方案，开始搜索真实图片…`)
+            showProgress(30, `正在搜索真实图片 (0/${plan.length})…`)
 
-            // Step 3: Search images on Wikimedia Commons
             for (let i = 0; i < plan.length; i++) {
                 const p = plan[i] || {}
                 const idx = i + 1
-                addLog(`(${idx}/${plan.length}) 搜索真实图片：${p.title || '未命名'}`)
+                addLog(`(${idx}/${plan.length}) 搜索图片：${p.title || '未命名'}…`)
 
                 let real = null
                 try {
                     real = await searchCommonsImage(p.imageQuery || p.title || theme)
                 } catch (e) {
-                    addLog(`(${idx}) 搜索失败：${e.message}`)
+                    addLog(`(${idx}) 搜索失败：${e.message}`, 'err')
                 }
 
                 if (!real) {
-                    addLog(`(${idx}) 未找到合适图片，跳过`)
+                    addLog(`(${idx}) 未找到合适图片，跳过`, 'warn')
                     continue
                 }
 
@@ -570,32 +686,39 @@ async function curate() {
                     sourceTitle: real.title,
                     position: POSITIONS[i]
                 })
-                addLog(`(${idx}) 已找到图片：${real.title}`)
+                addLog(`(${idx}/${plan.length}) ✅ ${real.title}`, 'ok')
+
+                const pct = 30 + Math.round(((i + 1) / plan.length) * 50)
+                showProgress(pct, `正在搜索真实图片 (${idx}/${plan.length})…`)
             }
         } else {
             // Fallback: No AI API, use Wikimedia Commons directly
-            addLog('⚠️ AI 服务不可用，直接从 Wikimedia Commons 搜索展品…', 'err')
-            addLog(`搜索主题「${theme}」的真实图片…`)
-            
+            addLog('ℹ️ AI 服务不可用，直接从 Wikimedia Commons 搜索…', 'warn')
+            addLog('（不配置 AI Key 也可以正常策展，只是描述来自 Wikipedia 摘要）')
+            showProgress(10, `正在搜索「${theme}」相关图片…`)
+
             const results = await commonsSearchSubjects(theme, count)
-            addLog(`找到 ${results.length} 张相关图片`, 'ok')
-            
+            addLog(`找到 ${results.length} 张相关图片，正在获取详细资料…`)
+            showProgress(30, `找到 ${results.length} 张图片，正在获取描述…`)
+
+            // Fetch Wikipedia descriptions in parallel for speed
+            const wikiPromises = results.map(r =>
+                fetchWikipediaSummary(r.title).catch(() => null)
+            )
+            const wikiInfos = await Promise.all(wikiPromises)
+
             for (let i = 0; i < results.length; i++) {
                 const r = results[i]
+                const wiki = wikiInfos[i]
                 const idx = i + 1
-                
-                // Try to get Wikipedia description
-                let wikiInfo = null
-                try {
-                    wikiInfo = await fetchWikipediaSummary(r.title)
-                } catch {}
-                
-                const desc = (wikiInfo && wikiInfo.extract) || r.description || `${theme} 相关展品`
-                const repoUrl = (wikiInfo && wikiInfo.contentUrl) || `https://commons.wikimedia.org/wiki/${encodeURIComponent(r.sourceTitle)}`
-                
+
+                const desc = (wiki && wiki.extract) || r.description || `${theme} 相关展品`
+                const repoUrl = (wiki && wiki.contentUrl) ||
+                    `https://commons.wikimedia.org/wiki/${encodeURIComponent(r.sourceTitle)}`
+
                 items.push({
                     id: `p${idx}`,
-                    title: (wikiInfo && wikiInfo.title) || r.title,
+                    title: (wiki && wiki.title) || r.title,
                     aiModel: 'Photograph',
                     prompt: desc,
                     repoUrl: repoUrl,
@@ -604,55 +727,61 @@ async function curate() {
                     sourceTitle: r.sourceTitle,
                     position: POSITIONS[i]
                 })
-                addLog(`(${idx}/${results.length}) ${r.title}`)
+                addLog(`(${idx}/${results.length}) ✅ ${(wiki && wiki.title) || r.title}`, 'ok')
+
+                const pct = 30 + Math.round(((i + 1) / results.length) * 50)
+                showProgress(pct, `正在整理展品资料 (${idx}/${results.length})…`)
             }
         }
 
         if (items.length === 0) {
             addLog('❌ 没有找到任何可用图片，已取消。', 'err')
+            hideProgress()
             return
         }
 
-        // Step 4: Push to gallery via postMessage
+        // Step 4: Push to gallery
         addLog('正在推送展品到 3D 画廊…')
+        showProgress(90, '正在加载 3D 画廊预览…')
         pushToGallery(items, scene)
 
-        // Step 5: Generate share link
+        // Step 5: Share link
         const shareData = encodeURIComponent(JSON.stringify(items))
         const shareUrl = GALLERY_URL + '?scene=' + scene + '&data=' + shareData
         $('shareLink').value = shareUrl
         $('resultSection').classList.add('show')
 
+        showProgress(100, '完成！')
         addLog(`✅ 展览已生成！共 ${items.length} 件展品。`, 'ok')
         addLog('🔗 分享链接已生成，可复制分享。', 'ok')
 
+        setTimeout(() => hideProgress(), 2000)
+
     } catch (e) {
         addLog('❌ 策展失败：' + e.message, 'err')
+        hideProgress()
     } finally {
         btn.disabled = false
+        btn.textContent = '🔍 策划展览'
     }
 }
 
 function pushToGallery(items, scene) {
     preview.classList.add('show')
-    // Load gallery if not already loaded
     const baseSrc = GALLERY_URL + '?scene=' + scene
     if (!frame.src.startsWith(GALLERY_URL)) {
         frame.src = baseSrc
     }
-    // Wait for gallery to be ready, then send data
     const sendData = () => {
         frame.contentWindow.postMessage({
             type: 'neurogallery:swapPaintings',
             paintings: items
         }, '*')
-        // Also switch scene
         frame.contentWindow.postMessage({
             type: 'neurogallery:switchScene',
             scene: scene
         }, '*')
     }
-    // Try immediately and also after a delay (gallery needs time to load)
     setTimeout(sendData, 1000)
     setTimeout(sendData, 3000)
     setTimeout(sendData, 5000)
@@ -677,8 +806,44 @@ $('copyLink').addEventListener('click', () => {
     setTimeout(() => { $('copyLink').textContent = '复制' }, 2000)
 })
 
+// Settings toggle
+$('settingsToggle').addEventListener('click', () => {
+    const toggle = $('settingsToggle')
+    const body = $('settingsBody')
+    toggle.classList.toggle('open')
+    body.classList.toggle('open')
+})
+
+// Save API key
+$('saveKey').addEventListener('click', () => {
+    const key = $('apiKey').value.trim()
+    if (key) {
+        userApiKey = key
+        localStorage.setItem('agnes_api_key', key)
+        updateApiKeyStatus()
+        addLog('API Key 已保存到浏览器', 'ok')
+        // Re-detect API with the key
+        activeApiBase = null
+        detectApiBase().then(() => refreshStatus())
+    } else {
+        // Clear key
+        userApiKey = ''
+        localStorage.removeItem('agnes_api_key')
+        updateApiKeyStatus()
+        addLog('API Key 已清除', 'warn')
+        activeApiBase = null
+        refreshStatus()
+    }
+})
+
+// Load saved API key into input on page load
+if (userApiKey) {
+    $('apiKey').value = userApiKey
+}
+
 // ---- Initialize ----
 $('openlink').href = GALLERY_URL
+updateApiKeyStatus()
 refreshStatus()
 setInterval(refreshStatus, 30000)
 </script>

@@ -45,9 +45,9 @@ export default class GalleryRoom {
 
         // Wall material with real concrete texture or procedural fallback
         const wallMaterial = new THREE.MeshStandardMaterial({
-            color: '#e0e0e0',
-            roughness: 0.8,
-            metalness: 0.1
+            color: '#f5f5f5',
+            roughness: 0.9,
+            metalness: 0.05
         })
 
         // Use real concrete texture if available
