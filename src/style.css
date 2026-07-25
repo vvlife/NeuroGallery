@@ -968,3 +968,52 @@ html {
         font-size: 15px;
     }
 }
+
+/* Immersive mode hint */
+.immersive-hint {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-10px);
+    z-index: 900;
+    padding: 10px 22px;
+    background: rgba(0, 0, 0, 0.55);
+    color: rgba(255, 255, 255, 0.95);
+    border-radius: 22px;
+    font-size: 14px;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    letter-spacing: 0.03em;
+    backdrop-filter: blur(8px);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    white-space: nowrap;
+}
+
+.immersive-hint.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.immersive-hint.faded {
+    opacity: 0.35;
+}
+
+.immersive-hint kbd {
+    display: inline-block;
+    padding: 2px 8px;
+    margin: 0 2px;
+    background: rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: inherit;
+}
+
+@media (max-width: 768px) {
+    .immersive-hint {
+        top: 70px;
+        font-size: 12px;
+        padding: 8px 16px;
+    }
+}

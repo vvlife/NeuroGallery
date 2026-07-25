@@ -148,4 +148,27 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         })
     }
+
+    // Immersive-mode hint: visible while pointer lock is active (desktop),
+    // with a gentle fade after a few seconds so it does not block the view.
+    const immersiveHint = document.getElementById('immersiveHint')
+    let immersiveHintTimer = null
+
+    if (immersiveHint) {
+        document.addEventListener('pointerlockchange', () => {
+            if (document.pointerLockElement) {
+                immersiveHint.classList.add('visible')
+                immersiveHint.classList.remove('faded')
+
+                clearTimeout(immersiveHintTimer)
+                immersiveHintTimer = setTimeout(() => {
+                    immersiveHint.classList.add('faded')
+                }, 6000)
+            } else {
+                immersiveHint.classList.remove('visible')
+                immersiveHint.classList.remove('faded')
+                clearTimeout(immersiveHintTimer)
+            }
+        })
+    }
 })

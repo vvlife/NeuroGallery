@@ -158,7 +158,7 @@ export default class PresentationUI {
             border: 1px solid rgba(255, 255, 255, 0.2);
             backdrop-filter: blur(10px);
         `
-        this.instructions.innerHTML = 'Mișcă-te cu <strong style="color: #ffffff;">WASD</strong> sau apasă <strong style="color: #ffffff;">ESC</strong> pentru a ieși'
+        this.instructions.innerHTML = '<strong style="color: #ffffff;">WASD</strong> 移动视角 · 按 <strong style="color: #ffffff;">ESC</strong> 退出'
 
         // Add CSS animation
         const style = document.createElement('style')

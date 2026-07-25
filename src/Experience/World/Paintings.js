@@ -41,7 +41,7 @@ export default class Paintings {
             roughness: 0.9,
             metalness: 0.0,
             transparent: false,
-            side: THREE.FrontSide,
+            side: THREE.DoubleSide,
             envMapIntensity: 0.1,
         })
 
@@ -97,6 +97,7 @@ export default class Paintings {
             })
 
             group.add(frameModel)
+            group.userData.frame = frameModel
         }
 
         group.position.set(...position)
@@ -144,6 +145,11 @@ export default class Paintings {
                 canvas.material.needsUpdate = true
             }
 
+            // Scenes provide their own display stands — hide the gallery frame
+            if (group.userData.frame) {
+                group.userData.frame.visible = false
+            }
+
             const spotLight = this.spotlights[index]
             if (spotLight) {
                 spotLight.visible = false
@@ -165,6 +171,10 @@ export default class Paintings {
                 canvas.material.emissive.setHex(0x000000)
                 canvas.material.emissiveIntensity = 0
                 canvas.material.needsUpdate = true
+            }
+
+            if (group.userData.frame) {
+                group.userData.frame.visible = true
             }
         })
     }

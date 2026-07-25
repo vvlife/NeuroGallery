@@ -268,8 +268,7 @@ export default class AnimalCrossingScene extends BaseScene {
     }
 
     setPaintingStands() {
-        const standMaterial = new THREE.MeshStandardMaterial({ color: '#8b5a2b', roughness: 0.85 })
-        const canvasMaterial = new THREE.MeshStandardMaterial({ color: '#fffaf0', roughness: 0.9 })
+        const woodMaterial = new THREE.MeshStandardMaterial({ color: '#a0683c', roughness: 0.75 })
 
         const slots = [
             [-6, 0, -6], [0, 0, -8], [6, 0, -6],
@@ -279,33 +278,68 @@ export default class AnimalCrossingScene extends BaseScene {
         slots.forEach(([x, y, z], index) => {
             const stand = new THREE.Group()
 
-            for (let i = 0; i < 3; i++) {
+            // A-frame: two leaning front legs
+            for (const side of [-1, 1]) {
                 const leg = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.05, 0.05, 2.2, 6),
-                    standMaterial
+                    new THREE.CylinderGeometry(0.06, 0.08, 2.6, 8),
+                    woodMaterial
                 )
-                const angle = (i / 3) * Math.PI * 2
-                leg.position.set(Math.cos(angle) * 0.6, 1.1, Math.sin(angle) * 0.6)
-                leg.rotation.z = Math.cos(angle) * 0.3
-                leg.rotation.x = Math.sin(angle) * 0.3
+                leg.position.set(side * 1.2, 1.2, 0.25)
+                leg.rotation.z = -side * 0.22
+                leg.rotation.x = 0.12
                 leg.castShadow = true
                 stand.add(leg)
             }
 
-            const board = new THREE.Mesh(
-                new THREE.BoxGeometry(3.2, 2.2, 0.08),
-                canvasMaterial
+            // Rear support leg
+            const rearLeg = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.06, 0.08, 2.4, 8),
+                woodMaterial
             )
-            board.position.set(0, 1.8, 0)
-            board.castShadow = true
-            board.receiveShadow = true
-            stand.add(board)
+            rearLeg.position.set(0, 1.1, -0.55)
+            rearLeg.rotation.x = -0.35
+            rearLeg.castShadow = true
+            stand.add(rearLeg)
 
+            // Crossbar the canvas rests on
+            const crossbar = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.05, 0.05, 2.9, 8),
+                woodMaterial
+            )
+            crossbar.rotation.z = Math.PI / 2
+            crossbar.position.set(0, 0.95, 0.32)
+            crossbar.castShadow = true
+            stand.add(crossbar)
+
+            // Open wooden frame around the artwork (no solid board, so the
+            // double-sided painting stays visible from behind as well)
+            const frameZ = 0.22
+            const frameParts = [
+                { w: 3.4, h: 0.12, px: 0, py: 2.9 },   // top
+                { w: 3.4, h: 0.12, px: 0, py: 0.62 },  // bottom
+                { w: 0.12, h: 2.4, px: -1.64, py: 1.76 }, // left
+                { w: 0.12, h: 2.4, px: 1.64, py: 1.76 }   // right
+            ]
+            frameParts.forEach(({ w, h, px, py }) => {
+                const part = new THREE.Mesh(
+                    new THREE.BoxGeometry(w, h, 0.1),
+                    woodMaterial
+                )
+                part.position.set(px, py, frameZ)
+                part.castShadow = true
+                stand.add(part)
+            })
+
+            // Painting slot (double-sided; the artwork group aligns to this)
             const painting = new THREE.Mesh(
                 new THREE.PlaneGeometry(3.0, 2.0),
-                new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.9 })
+                new THREE.MeshStandardMaterial({
+                    color: '#ffffff',
+                    roughness: 0.9,
+                    side: THREE.DoubleSide
+                })
             )
-            painting.position.set(0, 1.8, 0.05)
+            painting.position.set(0, 1.76, frameZ)
             painting.userData.slotIndex = index
             stand.add(painting)
             this.paintingSlots.push(painting)
