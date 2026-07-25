@@ -66,6 +66,33 @@ export default class Experience {
             this.loadingScreen.hide()
             this.world.setup()
         })
+
+        // Listen for postMessage from curator page (parent window)
+        // Allows the curator to push new painting data into the gallery iframe
+        window.addEventListener('message', (event) => {
+            this.handlePostMessage(event)
+        })
+    }
+
+    handlePostMessage(event) {
+        const data = event.data
+        if (!data || typeof data !== 'object') return
+
+        // Security: only accept specific message types
+        if (data.type === 'neurogallery:swapPaintings') {
+            // Validate payload
+            if (!Array.isArray(data.paintings)) {
+                console.warn('[NeuroGallery] swapPaintings: paintings must be an array')
+                return
+            }
+            console.log('[NeuroGallery] Received', data.paintings.length, 'paintings via postMessage')
+            this.world.paintings.swapPaintings(data.paintings)
+        } else if (data.type === 'neurogallery:switchScene') {
+            if (typeof data.scene === 'string' && this.world?.sceneManager) {
+                console.log('[NeuroGallery] Switching scene to', data.scene)
+                this.world.sceneManager.switchScene(data.scene)
+            }
+        }
     }
 
     resize() {

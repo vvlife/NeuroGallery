@@ -16,13 +16,62 @@ export default class Paintings {
     }
 
     async loadPaintingData() {
-        // Support ?paintings=https://xxx/paintings.json for remote config
+        // Support multiple data sources (priority order):
+        // 1. ?data=<url_encoded_json> — inline data for share links
+        // 2. ?paintings=https://xxx/paintings.json — remote JSON URL
+        // 3. Local default file
         const urlParams = new URLSearchParams(window.location.search)
+        
+        const inlineData = urlParams.get('data')
+        if (inlineData) {
+            try {
+                this.paintingData = JSON.parse(decodeURIComponent(inlineData))
+                this.createPaintingsFromData()
+                return
+            } catch (e) {
+                console.warn('[NeuroGallery] Failed to parse inline data, falling back to default')
+            }
+        }
+        
         const remotePaintings = urlParams.get('paintings')
         const dataUrl = remotePaintings || './textures/paintings/painting_data.json'
         const response = await fetch(dataUrl)
         this.paintingData = await response.json()
         this.createPaintingsFromData()
+    }
+
+    /**
+     * Replace paintings at runtime with data received via postMessage.
+     * Used by the curator page to push a new exhibition into the gallery iframe.
+     */
+    swapPaintings(paintingData) {
+        if (!Array.isArray(paintingData) || paintingData.length === 0) return
+
+        // Remove existing painting groups from the scene
+        for (const group of this.groups) {
+            if (group.parent) group.parent.remove(group)
+            group.traverse((child) => {
+                if (child.isMesh) {
+                    child.geometry?.dispose()
+                    if (child.material) {
+                        if (child.material.map) child.material.map.dispose()
+                        child.material.dispose()
+                    }
+                }
+            })
+        }
+        this.groups = []
+        this.paintingMeshes = []
+        this.spotlights = []
+
+        this.paintingData = paintingData
+        this.createPaintingsFromData()
+
+        // Re-attach paintings to the current scene's slots
+        const world = this.experience.world
+        if (world) {
+            world.attachPaintingsToScene()
+        }
     }
 
     createPaintingsFromData() {

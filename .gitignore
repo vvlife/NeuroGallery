@@ -36,3 +36,4 @@ server/.env
 # Curator auto-generated outputs
 public/textures/paintings/picture*.png
 public/textures/paintings/painting_data.backup.json
+.vercel
