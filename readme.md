@@ -179,11 +179,47 @@ the curator on its own port.
 
 > The curator reuses `server/.env` for the **text AI** key and `server/config.json` for the model/endpoint — it adds **no new secrets** and never bundles the key. Image sourcing uses the public **Wikimedia Commons** API (no key, no generation): the text AI only curates real facts, and the actual pictures are searched & downloaded from Commons. If Commons has no suitable image for an exhibit, that exhibit is skipped rather than filled with a fake AI image.
 
+## 🤖 Agent Skill — 自动策展
+
+NeuroGallery 内置一个 Agent Skill（`skill/SKILL.md`），让 AI Agent 能够通过自然语言指令自动策划 3D 虚拟展览。
+
+### 能力
+
+- 输入主题 → 自动生成展览方案（标题、描述、真实参考链接）
+- 从 Wikimedia Commons 搜索并下载**真实图片**（非 AI 生成）
+- 自动写入画廊配置并热重载
+- 支持四种场景切换
+
+### 快速使用
+
+```sh
+# 1. 启动服务
+npm run dev
+
+# 2. 通过 API 策展
+curl -s -N -X POST http://localhost:4000/api/curate \
+  -H "Content-Type: application/json" \
+  -d '{"theme":"太空探索","count":6,"language":"中文","scene":"space"}'
+```
+
+Agent 读取 `skill/SKILL.md` 后即可按照标准流程操作策展系统。详见 Skill 文件中的完整 API 参考和示例。
+
+### 场景推荐
+
+| 主题类型 | 推荐场景 |
+|----------|----------|
+| 艺术 / 绘画 / 经典展览 | 🏛️ 经典画廊 |
+| 自然 / 植物 / 轻松主题 | 🌿 动森花园 |
+| 太空 / 科技 / 未来 | 🚀 太空站 |
+| 赛博朋克 / 霓虹 / 科幻 | 🌃 赛博朋克 |
+
 ## Technology Stack 💻
 
 -   **Frontend Tooling**: Vite
 -   **3D Rendering**: Three.js
 -   **AI Image Generation**: OpenAI-compatible image API, proxied through a small backend in `server/` (the key stays server-side)
+-   **AI Curator**: Wikimedia Commons real-image search + text AI curation
+-   **Agent Skill**: `skill/SKILL.md` for automated exhibition creation
 -   **Control Panel**: lil-gui
 -   **Core Language**: JavaScript (ES6+)
 

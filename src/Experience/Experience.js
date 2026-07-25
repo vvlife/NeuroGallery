@@ -14,7 +14,6 @@ import RaycasterManager from './Utils/RaycasterManager.js'
 // UI Components
 import LoadingScreen from '../UI/LoadingScreen.js'
 import PresentationUI from '../UI/PresentationUI.js'
-import FpsCounter from '../UI/FpsCounter.js'
 
 // Assets sources
 import sources from './sources.js'
@@ -51,7 +50,6 @@ export default class Experience {
         // UI
         this.loadingScreen = new LoadingScreen()
         this.presentationUI = new PresentationUI()
-        this.fpsCounter = new FpsCounter()
 
         // Resize event
         this.sizes.on('resize', () => {
@@ -80,7 +78,6 @@ export default class Experience {
         this.playerControls.update()
         this.world.update()
         this.renderer.update()
-        this.fpsCounter.update()
     }
 
     destroy() {

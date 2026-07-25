@@ -166,6 +166,18 @@
             </div>
         </div>
 
+        <div class="row">
+            <div>
+                <label for="scene">展览场景</label>
+                <select id="scene">
+                    <option value="gallery" selected>🏛️ 经典画廊</option>
+                    <option value="animalCrossing">🌿 动森花园</option>
+                    <option value="space">🚀 太空站</option>
+                    <option value="cyberpunk">🌃 赛博朋克</option>
+                </select>
+            </div>
+        </div>
+
         <button id="go">🔍 策划展览</button>
         <p class="hint">
             点击后本页会调用现有后端：文字 AI 基于真实公开事实整理展品资料（名称、简介、真实链接），
@@ -247,7 +259,8 @@ $('go').addEventListener('click', async () => {
             body: JSON.stringify({
                 theme,
                 count: parseInt($('count').value, 10),
-                language: $('lang').value
+                language: $('lang').value,
+                scene: $('scene').value
             })
         })
         const reader = resp.body.getReader()
@@ -267,8 +280,10 @@ $('go').addEventListener('click', async () => {
                 else if (obj.type === 'done') {
                     addLog('✅ ' + obj.message, 'ok')
                     if (obj.ok) {
+                        const scene = $('scene').value
+                        const sceneParam = scene ? '?scene=' + scene : ''
                         preview.classList.add('show')
-                        frame.src = GALLERY_BASE + '?t=' + Date.now()
+                        frame.src = GALLERY_BASE + sceneParam + (sceneParam ? '&' : '?') + 't=' + Date.now()
                     }
                 } else addLog(obj.message || '')
             }

@@ -41,51 +41,50 @@
     </div>
 
     <!-- FPS Counter -->
-    <div class="fps-counter">
-        <span class="fps-value">0</span>
-        <span class="fps-label">FPS</span>
-    </div>
-
-    <!-- GUI Toggle Button -->
-    <button class="gui-toggle-btn" id="guiToggleBtn" title="Toggle Controls Panel (G)">
-        <span class="gui-toggle-icon">⚙️</span>
-    </button>
-
-    <!-- Scene Selector -->
-    <div class="scene-selector" id="sceneSelector">
-        <button class="scene-selector-toggle" id="sceneSelectorToggle" title="切换场景">
-            <span>🎨</span>
-            <span class="scene-selector-label">场景</span>
-        </button>
-        <div class="scene-selector-menu" id="sceneSelectorMenu">
-            <button class="scene-option active" data-scene="gallery">
-                <span class="scene-icon">🏛️</span>
-                <span class="scene-name">经典画廊</span>
+    <!-- Top Toolbar: 场景 / 创作 / 设置 -->
+    <div class="top-toolbar">
+        <!-- Scene Selector -->
+        <div class="scene-selector" id="sceneSelector">
+            <button class="scene-selector-toggle" id="sceneSelectorToggle" title="切换场景">
+                <span>🎨</span>
+                <span class="scene-selector-label">场景</span>
             </button>
-            <button class="scene-option" data-scene="animalCrossing">
-                <span class="scene-icon">🌿</span>
-                <span class="scene-name">动森花园</span>
-            </button>
-            <button class="scene-option" data-scene="space">
-                <span class="scene-icon">🚀</span>
-                <span class="scene-name">太空站</span>
-            </button>
-            <button class="scene-option" data-scene="cyberpunk">
-                <span class="scene-icon">🌃</span>
-                <span class="scene-name">赛博朋克</span>
-            </button>
+            <div class="scene-selector-menu" id="sceneSelectorMenu">
+                <button class="scene-option active" data-scene="gallery">
+                    <span class="scene-icon">🏛️</span>
+                    <span class="scene-name">经典画廊</span>
+                </button>
+                <button class="scene-option" data-scene="animalCrossing">
+                    <span class="scene-icon">🌿</span>
+                    <span class="scene-name">动森花园</span>
+                </button>
+                <button class="scene-option" data-scene="space">
+                    <span class="scene-icon">🚀</span>
+                    <span class="scene-name">太空站</span>
+                </button>
+                <button class="scene-option" data-scene="cyberpunk">
+                    <span class="scene-icon">🌃</span>
+                    <span class="scene-name">赛博朋克</span>
+                </button>
+            </div>
         </div>
-    </div>
 
-    <!-- Easel Create Button -->
-    <button class="easel-fab" id="easelFab" title="创作 AI 艺术">
-        <span class="easel-fab-icon">🖌️</span>
-        <span class="easel-fab-label">创作</span>
-    </button>
+        <!-- Create / Curator Button -->
+        <button class="toolbar-btn curator-btn" id="curatorBtn" title="展览创作">
+            <span>🖌️</span>
+            <span>创作</span>
+        </button>
+
+        <!-- Settings Button -->
+        <button class="toolbar-btn settings-btn" id="guiToggleBtn" title="设置">
+            <span>⚙️</span>
+            <span>设置</span>
+        </button>
+    </div>
 
     <!-- Immersive Mode Hint -->
     <div class="immersive-hint" id="immersiveHint">
-        <span class="immersive-hint-text">WASD 移动 · 鼠标环视 · 按 <kbd>ESC</kbd> 退出沉浸模式</span>
+        <span class="immersive-hint-text">WASD 移动 · 鼠标环视 · 按 <kbd>Q</kbd> 退出沉浸模式</span>
     </div>
 
     <!-- Three.js Canvas -->

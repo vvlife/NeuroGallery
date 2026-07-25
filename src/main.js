@@ -134,18 +134,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             })
         })
+
+        // Support ?scene=xxx URL param to auto-switch scene on load
+        const params = new URLSearchParams(window.location.search)
+        const urlScene = params.get('scene')
+        if (urlScene) {
+            const validScenes = ['gallery', 'animalCrossing', 'space', 'cyberpunk']
+            if (validScenes.includes(urlScene)) {
+                const waitAndSwitch = () => {
+                    if (experience.world?.sceneManager) {
+                        experience.world.sceneManager.switchScene(urlScene)
+                        // Update active button
+                        sceneOptions.forEach(b => {
+                            b.classList.toggle('active', b.dataset.scene === urlScene)
+                        })
+                    } else {
+                        setTimeout(waitAndSwitch, 200)
+                    }
+                }
+                setTimeout(waitAndSwitch, 300)
+            }
+        }
     }
 
-    // Easel floating action button — opens the generate dialog directly,
-    // no need to precisely click the small 3D easel (hard on mobile).
-    const easelFab = document.getElementById('easelFab')
-
-    if (easelFab) {
-        easelFab.addEventListener('click', (e) => {
+    // Curator button — opens the exhibition curator page
+    const curatorBtn = document.getElementById('curatorBtn')
+    if (curatorBtn) {
+        curatorBtn.addEventListener('click', (e) => {
             e.stopPropagation()
-            if (experience.world?.easel) {
-                experience.world.easel.handleEaselClick()
-            }
+            window.open('http://localhost:4000', '_blank')
         })
     }
 
@@ -163,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 clearTimeout(immersiveHintTimer)
                 immersiveHintTimer = setTimeout(() => {
                     immersiveHint.classList.add('faded')
-                }, 6000)
+                }, 3000)
             } else {
                 immersiveHint.classList.remove('visible')
                 immersiveHint.classList.remove('faded')

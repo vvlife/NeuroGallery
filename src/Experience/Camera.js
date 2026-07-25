@@ -76,10 +76,20 @@ export default class Camera {
                     return
                 }
 
+                // ESC exit: just hide the entry screen and restore cursor.
+                // No overlay — user can click the canvas to re-enter.
                 if (entryScreen) {
-                    entryScreen.style.display = 'flex'
+                    entryScreen.style.display = 'none'
                 }
+                document.body.style.cursor = 'default'
             }, 10)
+        })
+
+        // Click the canvas to re-enter pointer lock after ESC exit
+        this.canvas.addEventListener('click', () => {
+            if (!this.controls.isLocked) {
+                this.controls.lock()
+            }
         })
 
         document.addEventListener('pointerlockchange', () => {

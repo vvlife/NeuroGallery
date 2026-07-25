@@ -158,6 +158,29 @@ export default class PlayerControls {
     }
 
     onKeyDown(event) {
+        // Q to quit immersive mode (avoids browser's native ESC pointer-lock banner)
+        if (event.code === 'KeyQ') {
+            if (this.camera && this.camera.presentationMode && this.camera.presentationMode.active) {
+                this.camera.exitPresentationMode()
+                return
+            }
+            if (this.controlsLocked) {
+                this.temporaryPointerLockExit = true
+                if (document.pointerLockElement) {
+                    document.exitPointerLock()
+                }
+                return
+            }
+        }
+
+        // ESC still works for presentation mode and GUI as fallback
+        if (event.code === 'Escape') {
+            if (this.camera && this.camera.presentationMode && this.camera.presentationMode.active) {
+                this.camera.exitPresentationMode()
+                return
+            }
+        }
+
         if (this.camera && this.camera.presentationMode && this.camera.presentationMode.active) {
             if (['KeyW', 'KeyS', 'KeyA', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
                 this.camera.exitPresentationMode()

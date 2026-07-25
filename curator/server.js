@@ -227,10 +227,10 @@ function isURL(v) {
     return typeof v === 'string' && /^https?:\/\//i.test(v.trim())
 }
 
-async function curate({ theme, count = 6, language = '中文' }, res) {
+async function curate({ theme, count = 6, language = '中文', scene = 'gallery' }, res) {
     count = Math.max(1, Math.min(6, parseInt(count, 10) || 6))
 
-    logLine(res, { type: 'log', step: 'init', message: `主题：「${theme}」 数量：${count} 语言：${language}` })
+    logLine(res, { type: 'log', step: 'init', message: `主题：「${theme}」 数量：${count} 语言：${language} 场景：${scene}` })
 
     // 1) Make sure the gallery (and its backend) is running.
     logLine(res, { type: 'log', step: 'start', message: '启动 / 检查现有画廊与后端…' })
@@ -335,6 +335,7 @@ async function curate({ theme, count = 6, language = '中文' }, res) {
         ok,
         theme,
         count: items.length,
+        scene,
         galleryUrl: GALLERY,
         message: ok ? '展览已生成并启动！' : '配置已写入，但画廊重启未完成，请稍后刷新。'
     })
@@ -372,7 +373,7 @@ const server = http.createServer(async (req, res) => {
         res.setHeader('X-Accel-Buffering', 'no')
         // Run orchestration; stream NDJSON progress.
         curate(
-            { theme, count: params.count, language: params.language || '中文' },
+            { theme, count: params.count, language: params.language || '中文', scene: params.scene || 'gallery' },
             res
         ).finally(() => res.end())
         return
