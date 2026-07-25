@@ -65,6 +65,14 @@ export default class Experience {
         this.resources.on('ready', () => {
             this.loadingScreen.hide()
             this.world.setup()
+
+            // Check URL params for initial scene
+            const urlParams = new URLSearchParams(window.location.search)
+            const scene = urlParams.get('scene')
+            if (scene && this.world?.sceneManager) {
+                console.log('[NeuroGallery] Initial scene from URL:', scene)
+                this.world.sceneManager.switchScene(scene)
+            }
         })
 
         // Listen for postMessage from curator page (parent window)
