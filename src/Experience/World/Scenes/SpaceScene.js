@@ -25,13 +25,13 @@ export default class SpaceScene extends BaseScene {
         const env = this.experience.world?.environment
         if (!env) return
 
-        env.sunLight.intensity = 0.3
-        env.sunLight.color.setHex(0x8888ff)
+        env.sunLight.intensity = 0.8
+        env.sunLight.color.setHex(0xaaaaff)
         env.sunLight.position.set(10, 20, 10)
-        env.fillLight.intensity = 0.15
-        env.fillLight.color.setHex(0x4040a0)
-        env.ambientLight.intensity = 0.3
-        env.ambientLight.color.setHex(0x1a1a3e)
+        env.fillLight.intensity = 0.4
+        env.fillLight.color.setHex(0x6060c0)
+        env.ambientLight.intensity = 0.7
+        env.ambientLight.color.setHex(0x2a2a5e)
 
         this.scene.environment = null
         this.scene.background = new THREE.Color('#050510')

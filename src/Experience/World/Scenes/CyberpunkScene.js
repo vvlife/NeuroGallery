@@ -24,12 +24,12 @@ export default class CyberpunkScene extends BaseScene {
         const env = this.experience.world?.environment
         if (!env) return
 
-        env.sunLight.intensity = 0.2
-        env.sunLight.color.setHex(0x4444aa)
-        env.fillLight.intensity = 0.1
-        env.fillLight.color.setHex(0x220044)
-        env.ambientLight.intensity = 0.4
-        env.ambientLight.color.setHex(0x1a0a2e)
+        env.sunLight.intensity = 0.5
+        env.sunLight.color.setHex(0x6666cc)
+        env.fillLight.intensity = 0.3
+        env.fillLight.color.setHex(0x440066)
+        env.ambientLight.intensity = 0.8
+        env.ambientLight.color.setHex(0x2a1a3e)
 
         this.scene.environment = null
         this.scene.background = new THREE.Color('#0a0512')
