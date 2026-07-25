@@ -47,6 +47,11 @@ export default class SceneManager {
             world.environment.setPaintings(world.paintings)
         }
 
+        // Adapt the central easel to match the new scene theme
+        if (world?.easel) {
+            world.easel.adaptToScene(key)
+        }
+
         this.emit('sceneChanged', key)
     }
 

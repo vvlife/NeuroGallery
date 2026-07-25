@@ -135,4 +135,17 @@ document.addEventListener('DOMContentLoaded', () => {
             })
         })
     }
+
+    // Easel floating action button — opens the generate dialog directly,
+    // no need to precisely click the small 3D easel (hard on mobile).
+    const easelFab = document.getElementById('easelFab')
+
+    if (easelFab) {
+        easelFab.addEventListener('click', (e) => {
+            e.stopPropagation()
+            if (experience.world?.easel) {
+                experience.world.easel.handleEaselClick()
+            }
+        })
+    }
 })

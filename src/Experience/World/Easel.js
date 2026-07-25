@@ -14,6 +14,7 @@ export default class Easel {
         this.canvas = null
         this.isGenerating = false
         this.modalOpen = false
+        this.currentSceneKey = 'gallery'
 
         this.createEasel()
 
@@ -23,6 +24,10 @@ export default class Easel {
     }
 
     createEasel() {
+        this.createGalleryEasel()
+    }
+
+    createGalleryEasel() {
         if (!this.resources.items.easel) {
             return
         }
@@ -72,6 +77,349 @@ export default class Easel {
         this.canvas.name = 'easel-canvas'
 
         this.easelGroup.add(this.canvas)
+
+        // Invisible, generous hit-box around the whole easel so it is easy to
+        // click/tap — the actual easel canvas is small and hard to hit,
+        // especially on touch screens.
+        const hitboxGeometry = new THREE.BoxGeometry(2.6, 3.2, 2.4)
+        const hitboxMaterial = new THREE.MeshBasicMaterial({
+            visible: false
+        })
+        this.hitbox = new THREE.Mesh(hitboxGeometry, hitboxMaterial)
+        this.hitbox.position.set(0, 1.6, 0)
+        this.hitbox.userData.clickable = true
+        this.hitbox.userData.type = 'easel-canvas'
+        this.hitbox.name = 'easel-hitbox'
+
+        this.easelGroup.add(this.hitbox)
+    }
+
+    // ─── Animal Crossing: wooden stand with a canvas on top ───
+    createAnimalCrossingEasel() {
+        this.easelGroup = new THREE.Group()
+
+        const woodMaterial = new THREE.MeshStandardMaterial({ color: '#a0703d', roughness: 0.9 })
+        const darkWoodMaterial = new THREE.MeshStandardMaterial({ color: '#6b4a2b', roughness: 0.85 })
+
+        // Three legs forming a tripod
+        const legPositions = [
+            { angle: 0, tilt: 0.15 },
+            { angle: Math.PI * 2 / 3, tilt: 0.15 },
+            { angle: Math.PI * 4 / 3, tilt: 0.15 }
+        ]
+        legPositions.forEach(({ angle, tilt }) => {
+            const leg = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.06, 0.08, 3.2, 8),
+                darkWoodMaterial
+            )
+            leg.position.set(Math.cos(angle) * 0.45, 1.6, Math.sin(angle) * 0.45)
+            leg.rotation.z = Math.cos(angle) * tilt
+            leg.rotation.x = Math.sin(angle) * tilt
+            leg.castShadow = true
+            leg.receiveShadow = true
+            leg.userData.clickable = true
+            leg.userData.type = 'easel'
+            this.easelGroup.add(leg)
+        })
+
+        // Crossbar
+        const crossbar = new THREE.Mesh(
+            new THREE.BoxGeometry(1.4, 0.08, 0.08),
+            woodMaterial
+        )
+        crossbar.position.set(0, 1.2, 0)
+        crossbar.castShadow = true
+        crossbar.userData.clickable = true
+        crossbar.userData.type = 'easel'
+        this.easelGroup.add(crossbar)
+
+        // Canvas board
+        const boardGeometry = new THREE.PlaneGeometry(1.4, 1.4)
+        const canvasMaterial = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            roughness: 0.8,
+            metalness: 0.0
+        })
+        this.canvas = new THREE.Mesh(boardGeometry, canvasMaterial)
+        this.canvas.position.set(0, 2.3, -0.15)
+        this.canvas.rotation.x = -0.1
+        this.canvas.userData.clickable = true
+        this.canvas.userData.type = 'easel-canvas'
+        this.canvas.name = 'easel-canvas'
+        this.easelGroup.add(this.canvas)
+
+        this.easelGroup.position.set(0, 0, 0)
+        this.scene.add(this.easelGroup)
+    }
+
+    // ─── Space Scene: floating holographic pedestal ───
+    createSpaceEasel() {
+        this.easelGroup = new THREE.Group()
+
+        const metalMaterial = new THREE.MeshStandardMaterial({
+            color: '#2a3a5e',
+            roughness: 0.3,
+            metalness: 0.9
+        })
+        const glowMaterial = new THREE.MeshStandardMaterial({
+            color: '#00d4ff',
+            emissive: '#00d4ff',
+            emissiveIntensity: 0.6,
+            roughness: 0.2
+        })
+
+        // Base disc
+        const base = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.2, 1.5, 0.3, 16),
+            metalMaterial
+        )
+        base.position.y = 0.15
+        base.castShadow = true
+        base.receiveShadow = true
+        base.userData.clickable = true
+        base.userData.type = 'easel'
+        this.easelGroup.add(base)
+
+        // Glowing ring
+        const ring = new THREE.Mesh(
+            new THREE.TorusGeometry(1.3, 0.06, 8, 32),
+            glowMaterial
+        )
+        ring.rotation.x = Math.PI / 2
+        ring.position.y = 0.3
+        this.easelGroup.add(ring)
+
+        // Vertical support beam
+        const beam = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.08, 0.08, 2.5, 8),
+            metalMaterial
+        )
+        beam.position.y = 1.55
+        beam.castShadow = true
+        beam.userData.clickable = true
+        beam.userData.type = 'easel'
+        this.easelGroup.add(beam)
+
+        // Holographic screen frame
+        const frame = new THREE.Mesh(
+            new THREE.BoxGeometry(1.4, 1.4, 0.06),
+            metalMaterial
+        )
+        frame.position.y = 2.5
+        frame.castShadow = true
+        frame.userData.clickable = true
+        frame.userData.type = 'easel'
+        this.easelGroup.add(frame)
+
+        // Holographic canvas
+        const canvasGeometry = new THREE.PlaneGeometry(1.2, 1.2)
+        const canvasMaterial = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            roughness: 0.2,
+            metalness: 0.1,
+            emissive: '#0a2a4a',
+            emissiveIntensity: 0.3
+        })
+        this.canvas = new THREE.Mesh(canvasGeometry, canvasMaterial)
+        this.canvas.position.set(0, 2.5, 0.04)
+        this.canvas.userData.clickable = true
+        this.canvas.userData.type = 'easel-canvas'
+        this.canvas.name = 'easel-canvas'
+        this.easelGroup.add(this.canvas)
+
+        // Floating particles around pedestal
+        const particleCount = 50
+        const positions = new Float32Array(particleCount * 3)
+        for (let i = 0; i < particleCount; i++) {
+            const angle = (i / particleCount) * Math.PI * 2
+            const r = 1.5 + Math.random() * 0.5
+            positions[i * 3] = Math.cos(angle) * r
+            positions[i * 3 + 1] = 1 + Math.random() * 2
+            positions[i * 3 + 2] = Math.sin(angle) * r
+        }
+        const particleGeo = new THREE.BufferGeometry()
+        particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+        const particleMat = new THREE.PointsMaterial({
+            color: '#00d4ff',
+            size: 0.08,
+            transparent: true,
+            opacity: 0.7
+        })
+        const particles = new THREE.Points(particleGeo, particleMat)
+        particles.name = 'easel-particles'
+        this.easelGroup.add(particles)
+
+        this.easelGroup.position.set(0, 0, 0)
+        this.scene.add(this.easelGroup)
+    }
+
+    // ─── Cyberpunk: neon-edged tech terminal ───
+    createCyberpunkEasel() {
+        this.easelGroup = new THREE.Group()
+
+        const darkMetalMaterial = new THREE.MeshStandardMaterial({
+            color: '#1a1a2e',
+            roughness: 0.3,
+            metalness: 0.9
+        })
+        const neonMagenta = new THREE.MeshStandardMaterial({
+            color: '#ff00ff',
+            emissive: '#ff00ff',
+            emissiveIntensity: 1.2,
+            roughness: 0.2
+        })
+        const neonCyan = new THREE.MeshStandardMaterial({
+            color: '#00ffff',
+            emissive: '#00ffff',
+            emissiveIntensity: 1.0,
+            roughness: 0.2
+        })
+
+        // Base platform
+        const base = new THREE.Mesh(
+            new THREE.BoxGeometry(1.8, 0.3, 1.8),
+            darkMetalMaterial
+        )
+        base.position.y = 0.15
+        base.castShadow = true
+        base.receiveShadow = true
+        base.userData.clickable = true
+        base.userData.type = 'easel'
+        this.easelGroup.add(base)
+
+        // Neon strips on base
+        const baseStripFront = new THREE.Mesh(
+            new THREE.BoxGeometry(1.6, 0.03, 0.03),
+            neonCyan
+        )
+        baseStripFront.position.set(0, 0.3, 0.9)
+        this.easelGroup.add(baseStripFront)
+
+        const baseStripBack = new THREE.Mesh(
+            new THREE.BoxGeometry(1.6, 0.03, 0.03),
+            neonMagenta
+        )
+        baseStripBack.position.set(0, 0.3, -0.9)
+        this.easelGroup.add(baseStripBack)
+
+        // Central pillar
+        const pillar = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.12, 0.15, 2.2, 8),
+            darkMetalMaterial
+        )
+        pillar.position.y = 1.4
+        pillar.castShadow = true
+        pillar.userData.clickable = true
+        pillar.userData.type = 'easel'
+        this.easelGroup.add(pillar)
+
+        // Screen frame
+        const frame = new THREE.Mesh(
+            new THREE.BoxGeometry(1.6, 1.6, 0.08),
+            darkMetalMaterial
+        )
+        frame.position.y = 2.6
+        frame.castShadow = true
+        frame.userData.clickable = true
+        frame.userData.type = 'easel'
+        this.easelGroup.add(frame)
+
+        // Neon border (magenta on top, cyan on bottom)
+        const neonTop = new THREE.Mesh(
+            new THREE.BoxGeometry(1.7, 0.06, 0.1),
+            neonMagenta
+        )
+        neonTop.position.set(0, 3.35, 0)
+        this.easelGroup.add(neonTop)
+
+        const neonBottom = new THREE.Mesh(
+            new THREE.BoxGeometry(1.7, 0.06, 0.1),
+            neonCyan
+        )
+        neonBottom.position.set(0, 1.85, 0)
+        this.easelGroup.add(neonBottom)
+
+        const neonLeft = new THREE.Mesh(
+            new THREE.BoxGeometry(0.06, 1.7, 0.1),
+            neonCyan
+        )
+        neonLeft.position.set(-0.82, 2.6, 0)
+        this.easelGroup.add(neonLeft)
+
+        const neonRight = new THREE.Mesh(
+            new THREE.BoxGeometry(0.06, 1.7, 0.1),
+            neonMagenta
+        )
+        neonRight.position.set(0.82, 2.6, 0)
+        this.easelGroup.add(neonRight)
+
+        // Screen / canvas
+        const canvasGeometry = new THREE.PlaneGeometry(1.3, 1.3)
+        const canvasMaterial = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            roughness: 0.2,
+            metalness: 0.1,
+            emissive: '#1a0a2a',
+            emissiveIntensity: 0.2
+        })
+        this.canvas = new THREE.Mesh(canvasGeometry, canvasMaterial)
+        this.canvas.position.set(0, 2.6, 0.05)
+        this.canvas.userData.clickable = true
+        this.canvas.userData.type = 'easel-canvas'
+        this.canvas.name = 'easel-canvas'
+        this.easelGroup.add(this.canvas)
+
+        this.easelGroup.position.set(0, 0, 0)
+        this.scene.add(this.easelGroup)
+    }
+
+    destroyEasel() {
+        if (this.easelGroup) {
+            // Dispose geometries and materials
+            this.easelGroup.traverse((child) => {
+                if (child.isMesh) {
+                    if (child.geometry) child.geometry.dispose()
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(m => m.dispose())
+                        } else {
+                            child.material.dispose()
+                        }
+                    }
+                }
+                if (child.isPoints) {
+                    if (child.geometry) child.geometry.dispose()
+                    if (child.material) child.material.dispose()
+                }
+            })
+            this.scene.remove(this.easelGroup)
+            this.easelGroup = null
+            this.canvas = null
+        }
+    }
+
+    adaptToScene(sceneKey) {
+        if (this.currentSceneKey === sceneKey && this.easelGroup) return
+
+        this.destroyEasel()
+        this.currentSceneKey = sceneKey
+
+        switch (sceneKey) {
+            case 'gallery':
+                this.createGalleryEasel()
+                break
+            case 'animalCrossing':
+                this.createAnimalCrossingEasel()
+                break
+            case 'space':
+                this.createSpaceEasel()
+                break
+            case 'cyberpunk':
+                this.createCyberpunkEasel()
+                break
+            default:
+                this.createGalleryEasel()
+        }
     }
 
     setupEventListeners() {
@@ -277,10 +625,11 @@ export default class Easel {
             this.experience.playerControls.temporaryPointerLockExit = false
         }
 
-        // Re-enter pointer lock after a short delay
+        // Re-enter pointer lock after a short delay (desktop only — touch
+        // devices have no pointer lock and calling it throws)
         setTimeout(() => {
             const canvas = this.experience.canvas
-            if (canvas && document.hasFocus()) {
+            if (canvas && document.hasFocus() && canvas.requestPointerLock) {
                 canvas.requestPointerLock()
             }
         }, 50)

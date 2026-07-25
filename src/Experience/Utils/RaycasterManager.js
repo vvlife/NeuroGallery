@@ -36,6 +36,10 @@ export default class RaycasterManager {
             event.target.closest('.entry-screen') ||
             event.target.closest('.presentation-overlay') ||
             event.target.closest('#easel-prompt-overlay') ||
+            event.target.closest('.scene-selector') ||
+            event.target.closest('.gui-toggle-btn') ||
+            event.target.closest('.easel-fab') ||
+            event.target.closest('.fps-counter') ||
             (this.camera && this.camera.presentationMode && this.camera.presentationMode.active)) {
             return
         }

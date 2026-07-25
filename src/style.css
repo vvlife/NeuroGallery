@@ -924,3 +924,47 @@ html {
         min-width: 160px;
     }
 }
+
+/* Easel floating action button */
+.easel-fab {
+    position: fixed;
+    bottom: 28px;
+    right: 24px;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 22px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    box-shadow: 0 6px 24px rgba(102, 126, 234, 0.45);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+
+.easel-fab:hover {
+    transform: translateY(-3px) scale(1.03);
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.55);
+}
+
+.easel-fab:active {
+    transform: scale(0.97);
+}
+
+.easel-fab-icon {
+    font-size: 20px;
+}
+
+@media (max-width: 768px) {
+    .easel-fab {
+        bottom: 20px;
+        right: 16px;
+        padding: 13px 18px;
+        font-size: 15px;
+    }
+}
