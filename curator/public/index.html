@@ -376,6 +376,7 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 <script>
 const $ = (id) => document.getElementById(id)
 const logEl = $('log')
@@ -629,23 +630,23 @@ function isURL(v) {
     return typeof v === 'string' && /^https?:\/\//i.test(v.trim())
 }
 
-// ---- URL shortener (using GitHub Pages redirect page) ----
-// We compress the share data with LZString-style encoding (using pako if available,
-// or plain base64 for simplicity) and put it in the URL hash.
-// The gallery page reads ?data= (base64 JSON) for share links.
-
-// Simple short link via GitHub Pages: we store data in the hash fragment
-// Gallery reads ?data=<base64> from query string OR #data=<base64> from hash
+// ---- URL share link with LZString compression ----
+// We compress the JSON data with LZString.compressToEncodedURIComponent
+// and put it in the URL hash: #d=<compressed>
+// The gallery page reads ?d=<compressed> or #d=<compressed> and decompresses.
 async function buildShareLink(items, scene) {
     const json = JSON.stringify(items)
-    // Use encodeURIComponent + btoa for base64
-    const b64 = btoa(unescape(encodeURIComponent(json)))
-    // Try to shorten via a service that supports CORS
-    const longUrl = GALLERY_URL + '?scene=' + scene + '&data=' + b64
+    // Use LZString compression for much shorter URLs
+    let dataParam
+    if (typeof LZString !== 'undefined') {
+        dataParam = LZString.compressToEncodedURIComponent(json)
+    } else {
+        // Fallback to base64 if LZString failed to load
+        dataParam = btoa(unescape(encodeURIComponent(json)))
+    }
+    const longUrl = GALLERY_URL + '?scene=' + scene + '&d=' + dataParam
 
-    // Try is.gd (supports CORS, but may be slow in China)
-    // Try tinyurl as fallback
-    // If both fail, return the long URL
+    // Try external URL shorteners (may be blocked in China)
     const shorteners = [
         async () => {
             const r = await fetch('https://is.gd/create.php?format=json&url=' + encodeURIComponent(longUrl), {
@@ -903,13 +904,6 @@ $('shortenBtn').addEventListener('click', async () => {
     $('shortenBtn').disabled = true
 
     try {
-        const result = await buildShareLink(
-            // We need items and scene — re-extract from current URL
-            // Actually we can just try to shorten the current URL directly
-            [],
-            ''
-        )
-        // Direct shorten attempt
         const shorteners = [
             async () => {
                 const r = await fetch('https://is.gd/create.php?format=json&url=' + encodeURIComponent(current), {
@@ -947,7 +941,7 @@ $('shortenBtn').addEventListener('click', async () => {
         }
         $('shortenBtn').textContent = '缩短'
         $('shareHint').textContent = '短链接服务不可用（可能被墙），完整链接仍可使用。'
-        addLog('⚠️ 短链接服务不可用', 'warn')
+        addLog('⚠️ 短链接服务不可用（is.gd / tinyurl 可能被墙）', 'warn')
     } catch (e) {
         $('shortenBtn').textContent = '缩短'
         addLog('⚠️ 缩短失败：' + e.message, 'warn')

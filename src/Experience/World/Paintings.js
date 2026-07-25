@@ -17,26 +17,49 @@ export default class Paintings {
 
     async loadPaintingData() {
         // Support multiple data sources (priority order):
-        // 1. ?data=<base64_json> or #data=<base64_json> — inline data for share links
-        // 2. ?paintings=https://xxx/paintings.json — remote JSON URL
-        // 3. Local default file
+        // 1. ?d=<lzstring_compressed> or #d=<lzstring_compressed> — compressed inline data
+        // 2. ?data=<url_encoded_json> or #data=<base64_json> — legacy inline data
+        // 3. ?paintings=https://xxx/paintings.json — remote JSON URL
+        // 4. Local default file
         const urlParams = new URLSearchParams(window.location.search)
         
-        let inlineData = urlParams.get('data')
-        let dataEncoding = 'url' // URL-encoded JSON
+        // Try compressed format first (?d= or #d=)
+        let compressedData = urlParams.get('d')
+        if (!compressedData && window.location.hash) {
+            const hashParams = new URLSearchParams(window.location.hash.slice(1))
+            compressedData = hashParams.get('d')
+        }
+        if (compressedData) {
+            try {
+                // Try LZString decompression first
+                let json
+                if (typeof LZString !== 'undefined') {
+                    json = LZString.decompressFromEncodedURIComponent(compressedData)
+                }
+                // If LZString failed or not available, try base64
+                if (!json) {
+                    json = decodeURIComponent(escape(atob(compressedData)))
+                }
+                this.paintingData = JSON.parse(json)
+                this.createPaintingsFromData()
+                return
+            } catch (e) {
+                console.warn('[NeuroGallery] Failed to parse compressed data, trying legacy format:', e)
+            }
+        }
         
-        // Also check hash fragment: #data=<base64>
+        // Legacy: ?data=<url_encoded_json> or #data=<base64_json>
+        let inlineData = urlParams.get('data')
+        let dataEncoding = 'url'
         if (!inlineData && window.location.hash) {
             const hashParams = new URLSearchParams(window.location.hash.slice(1))
             inlineData = hashParams.get('data')
             if (inlineData) dataEncoding = 'base64'
         }
-        
         if (inlineData) {
             try {
                 let parsed
                 if (dataEncoding === 'base64') {
-                    // Base64-encoded UTF-8 JSON
                     const json = decodeURIComponent(escape(atob(inlineData)))
                     parsed = JSON.parse(json)
                 } else {
