@@ -25,13 +25,13 @@ export default class SpaceScene extends BaseScene {
         const env = this.experience.world?.environment
         if (!env) return
 
-        env.sunLight.intensity = 0.8
+        env.sunLight.intensity = 1.2
         env.sunLight.color.setHex(0xaaaaff)
         env.sunLight.position.set(10, 20, 10)
-        env.fillLight.intensity = 0.4
-        env.fillLight.color.setHex(0x6060c0)
-        env.ambientLight.intensity = 0.7
-        env.ambientLight.color.setHex(0x2a2a5e)
+        env.fillLight.intensity = 0.6
+        env.fillLight.color.setHex(0x7070d0)
+        env.ambientLight.intensity = 1.0
+        env.ambientLight.color.setHex(0x3a3a6e)
 
         this.scene.environment = null
         this.scene.background = new THREE.Color('#050510')
@@ -138,7 +138,9 @@ export default class SpaceScene extends BaseScene {
         const planetMaterial = new THREE.MeshStandardMaterial({
             color: '#4a90d9',
             roughness: 0.7,
-            metalness: 0.2
+            metalness: 0.2,
+            emissive: '#1a3a6a',
+            emissiveIntensity: 0.6
         })
         const planet = new THREE.Mesh(planetGeometry, planetMaterial)
         planet.position.set(40, 10, -30)
@@ -160,7 +162,9 @@ export default class SpaceScene extends BaseScene {
         const moonGeometry = new THREE.SphereGeometry(2, 16, 16)
         const moonMaterial = new THREE.MeshStandardMaterial({
             color: '#aaaaaa',
-            roughness: 0.9
+            roughness: 0.9,
+            emissive: '#555555',
+            emissiveIntensity: 0.5
         })
         const moon = new THREE.Mesh(moonGeometry, moonMaterial)
         moon.position.set(55, 5, -35)
@@ -170,7 +174,9 @@ export default class SpaceScene extends BaseScene {
         const marsGeometry = new THREE.SphereGeometry(4, 24, 24)
         const marsMaterial = new THREE.MeshStandardMaterial({
             color: '#d94a4a',
-            roughness: 0.8
+            roughness: 0.8,
+            emissive: '#6a1a1a',
+            emissiveIntensity: 0.6
         })
         const mars = new THREE.Mesh(marsGeometry, marsMaterial)
         mars.position.set(-50, 20, 40)

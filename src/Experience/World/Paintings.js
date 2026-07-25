@@ -50,6 +50,7 @@ export default class Paintings {
             `/${paintingData.imageFile}`,
             (texture) => {
                 canvasMaterial.map = texture
+                canvasMaterial.emissiveMap = texture
                 canvasMaterial.needsUpdate = true
                 canvasMaterial.color.setHex(0xffffff)
             },
@@ -63,6 +64,7 @@ export default class Paintings {
         canvas.name = `painting-${paintingData.title?.replace(/\s+/g, '-') || 'untitled'}`
 
         group.add(canvas)
+        group.userData.canvas = canvas
         this.paintingMeshes.push(canvas)
 
         const spotLight = new THREE.SpotLight(0xffffff, 80, 10, Math.PI * 0.23, 0.3, 2)
@@ -134,6 +136,14 @@ export default class Paintings {
             group.position.copy(slotWorldPos).add(forward)
             group.quaternion.copy(slotWorldQuat)
 
+            // Make the artwork self-lit so it stays visible in dark scenes
+            const canvas = group.userData.canvas
+            if (canvas) {
+                canvas.material.emissive.setHex(0xffffff)
+                canvas.material.emissiveIntensity = 0.85
+                canvas.material.needsUpdate = true
+            }
+
             const spotLight = this.spotlights[index]
             if (spotLight) {
                 spotLight.visible = false
@@ -149,6 +159,13 @@ export default class Paintings {
             this.scene.add(group)
             group.position.set(...group.userData.defaultPosition)
             group.rotation.set(0, group.userData.defaultRotation, 0)
+
+            const canvas = group.userData.canvas
+            if (canvas) {
+                canvas.material.emissive.setHex(0x000000)
+                canvas.material.emissiveIntensity = 0
+                canvas.material.needsUpdate = true
+            }
         })
     }
 

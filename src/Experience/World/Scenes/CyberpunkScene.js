@@ -24,16 +24,16 @@ export default class CyberpunkScene extends BaseScene {
         const env = this.experience.world?.environment
         if (!env) return
 
-        env.sunLight.intensity = 0.5
-        env.sunLight.color.setHex(0x6666cc)
-        env.fillLight.intensity = 0.3
-        env.fillLight.color.setHex(0x440066)
-        env.ambientLight.intensity = 0.8
-        env.ambientLight.color.setHex(0x2a1a3e)
+        env.sunLight.intensity = 0.7
+        env.sunLight.color.setHex(0x7777dd)
+        env.fillLight.intensity = 0.4
+        env.fillLight.color.setHex(0x550088)
+        env.ambientLight.intensity = 1.1
+        env.ambientLight.color.setHex(0x3a2a4e)
 
         this.scene.environment = null
-        this.scene.background = new THREE.Color('#0a0512')
-        this.scene.fog = new THREE.Fog('#0a0512', 15, 60)
+        this.scene.background = new THREE.Color('#120a20')
+        this.scene.fog = new THREE.Fog('#120a20', 25, 90)
         if (env.environmentMap.updateMaterials) {
             env.environmentMap.updateMaterials()
         }
@@ -46,9 +46,9 @@ export default class CyberpunkScene extends BaseScene {
     setGround() {
         const groundGeometry = new THREE.PlaneGeometry(60, 60)
         const groundMaterial = new THREE.MeshStandardMaterial({
-            color: '#1a1a2e',
-            roughness: 0.2,
-            metalness: 0.8
+            color: '#2a2a40',
+            roughness: 0.3,
+            metalness: 0.7
         })
         const ground = new THREE.Mesh(groundGeometry, groundMaterial)
         ground.rotation.x = -Math.PI * 0.5
@@ -64,9 +64,11 @@ export default class CyberpunkScene extends BaseScene {
 
     setBuildings() {
         const buildingMaterial = new THREE.MeshStandardMaterial({
-            color: '#0f0f1a',
-            roughness: 0.8,
-            metalness: 0.3
+            color: '#2a2a3e',
+            roughness: 0.7,
+            metalness: 0.4,
+            emissive: '#12121f',
+            emissiveIntensity: 0.4
         })
 
         const neonColors = ['#ff00ff', '#00ffff', '#ff0080', '#8000ff', '#00ff80']

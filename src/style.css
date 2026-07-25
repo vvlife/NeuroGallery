@@ -769,6 +769,41 @@ html {
     letter-spacing: 0.1em;
 }
 
+/* Easel modal — mobile */
+@media (max-width: 768px) {
+    .easel-modal-dialog {
+        padding: 1.25rem;
+        width: calc(100% - 32px);
+        border-radius: 16px;
+    }
+
+    .easel-modal-title {
+        font-size: 1.35rem;
+        letter-spacing: 0.03em;
+        white-space: nowrap;
+    }
+
+    .easel-modal-description {
+        font-size: 0.9rem;
+    }
+
+    #prompt-input {
+        height: 90px;
+        font-size: 15px;
+    }
+
+    .easel-modal-buttons {
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 18px;
+    }
+
+    .easel-modal-btn {
+        width: 100%;
+        padding: 14px;
+    }
+}
+
 .easel-modal-description {
     color: #666;
     text-align: center;
