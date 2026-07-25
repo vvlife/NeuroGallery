@@ -148,36 +148,49 @@ The backend also resolves cross-origin issues by fetching the generated image se
 > **Tip:** Switch providers by editing `server/config.json` (`baseURL` + `imageModel`) — no frontend rebuild needed. The key never leaves the server.
 
 ### 🔍 AI Curator — build a real-source exhibition from a topic
-A standalone web app in `curator/` turns a **theme** into a full, ready-to-view exhibition — no manual editing of `painting_data.json` required.
+A standalone web app in `curator/` turns a **theme** into a full, ready-to-view 3D exhibition — entirely in the browser, no backend required.
+
+**Online demo** (no setup needed):
+```
+https://vvlife.github.io/NeuroGallery/curator.html
+```
 
 **What it does**
 1. You type a **theme** (e.g. *太空探索*, *印象派绘画*, *中国古建筑*) into the curator page.
-2. It calls the **text AI** through the *existing backend* (`/api/generate-text`) to curate a coherent set of N **real, verifiable** exhibits — each with a title, a factually accurate description, an English search phrase, and a real reference URL.
-3. For every exhibit it **searches Wikimedia Commons** for a real photo/image and downloads it into `public/textures/paintings/`. **No AI-generated fake images are used** — every picture is a real, sourced image (its Commons URL is recorded in `painting_data.json` as `source`).
-4. It rewrites `painting_data.json` (backing up the previous one to `painting_data.backup.json`) and the running gallery **hot-reloads** so the new show loads automatically.
+2. **If an AI API key is configured** (optional): the AI curates a coherent set of N **real, verifiable** exhibits — each with a title, a factually accurate description, an English search phrase, and a real reference URL.
+3. **If no AI key is available** (fallback mode): the curator directly searches **Wikimedia Commons** for images matching the theme, and uses the Commons `extmetadata` (ObjectName, Artist, ImageDescription) as the exhibit description — no Wikipedia API calls needed.
+4. For every exhibit it **searches Wikimedia Commons** for a real photo/image. **No AI-generated fake images are used** — every picture is a real, sourced image.
+5. The exhibition is pushed to the 3D gallery via `postMessage` for instant preview.
+6. A **share link** is generated with **LZString compression** (60% shorter than base64), so you can share the full exhibition with a single URL.
 
-**Run it (recommended — same origin as the gallery)**
+**Key features**
+- 🌐 **Pure frontend** — works entirely in the browser, no backend server needed
+- 🖼️ **Real images only** — all photos sourced from Wikimedia Commons
+- 📝 **AI-enhanced (optional)** — configure an Agnes API Key for AI-curated descriptions
+- 📎 **Shareable links** — LZString-compressed URLs, try is.gd/tinyurl shortening
+- 🎬 **Live preview** — exhibition loads in an embedded 3D gallery iframe
+- 🏛️ **Scene selection** — choose from Gallery, Animal Crossing, Space, or Cyberpunk
 
-Just run the normal dev command; Vite serves the curator under `/curator` and proxies
-its API (`/curator-api/*`) to the curator service, so the whole flow (page + every
-request, including `POST`) shares a single origin and works behind the preview proxy.
+**Run it locally**
 
 ```sh
 npm run dev            # gallery at http://localhost:5173
+curl http://localhost:5173/curator.html   # curator page
 ```
-Then open `http://localhost:5173/curator`, enter a theme, choose a count (3–6) and
-language, and hit **策划展览**. The right-hand panel shows a live progress log and a
-live preview of the running 3D gallery.
 
-**Run it (standalone)**
+**Configure AI (optional)**
 
-```sh
-npm run curator        # starts the curator at http://localhost:4000
+To enable AI-curated descriptions, click the **AI 增强（可选）** section in the curator page and enter your Agnes API Key. The key is stored in `localStorage` only — it never leaves the browser except as an `X-User-Api-Key` header to the API proxy.
+
+Without a key, the curator still works perfectly — it uses Wikimedia Commons metadata for descriptions instead.
+
+**Share link format**
+
 ```
-Then open `http://localhost:4000` (same UI, same behaviour). Use this when you prefer
-the curator on its own port.
+https://vvlife.github.io/NeuroGallery/?scene=space&d=<LZString_compressed_data>
+```
 
-> The curator reuses `server/.env` for the **text AI** key and `server/config.json` for the model/endpoint — it adds **no new secrets** and never bundles the key. Image sourcing uses the public **Wikimedia Commons** API (no key, no generation): the text AI only curates real facts, and the actual pictures are searched & downloaded from Commons. If Commons has no suitable image for an exhibit, that exhibit is skipped rather than filled with a fake AI image.
+The gallery supports both `?d=` (compressed) and legacy `?data=` (base64) formats, as well as hash fragments (`#d=`, `#data=`).
 
 ## 🤖 Agent Skill — 自动策展
 
@@ -213,7 +226,9 @@ curl -s -N -X POST https://<CURATOR_URL>/api/curate \
 | 参数 | 说明 | 示例 |
 |------|------|------|
 | `scene` | 初始场景 | `?scene=space` |
-| `paintings` | 远程展品 JSON | `?paintings=https://curator.../painting_data.json` |
+| `d` | LZString 压缩的展品数据 | `?d=N4IghiBcCMC+Q` |
+| `data` | Base64/URL编码的展品数据（旧格式） | `?data=...` |
+| `paintings` | 远程展品 JSON URL | `?paintings=https://.../painting_data.json` |
 | `apiBase` | 远程后端 API | `?apiBase=https://api.../api` |
 
 ### 本地部署
@@ -249,9 +264,10 @@ Agent 读取 `skill/SKILL.md` 后即可按照标准流程操作策展系统。�
 -   **Frontend Tooling**: Vite
 -   **3D Rendering**: Three.js
 -   **AI Image Generation**: OpenAI-compatible image API, proxied through a small backend in `server/` (the key stays server-side)
--   **AI Curator**: Wikimedia Commons real-image search + text AI curation
+-   **AI Curator**: Pure-frontend Wikimedia Commons real-image search + optional AI text curation
+-   **Share Links**: LZString compression (via jsdelivr CDN)
 -   **Agent Skill**: `skill/SKILL.md` for automated exhibition creation
--   **Deployment**: GitHub Pages (static) + Railway/Vercel (Node services)
+-   **Deployment**: GitHub Pages (static gallery + curator) + Vercel (API proxy)
 -   **Control Panel**: lil-gui
 -   **Core Language**: JavaScript (ES6+)
 
@@ -259,11 +275,13 @@ Agent 读取 `skill/SKILL.md` 后即可按照标准流程操作策展系统。�
 
 **GitHub Pages（自动部署）**：
 ```
-https://vvlife.github.io/NeuroGallery/
+画廊：  https://vvlife.github.io/NeuroGallery/
+策展：  https://vvlife.github.io/NeuroGallery/curator.html
 ```
 
-> 画廊前端为纯静态部署，支持 URL 参数配置远程后端和展品数据。
-> 画架的「在线生成画作」和「AI 策展」需要后端服务——把 `server/` + `curator/` 部署到任意支持 Node 的平台（Railway / Vercel / Render 等），再通过 URL 参数 `?apiBase=` 和 `?paintings=` 连接即可。
+> 画廊和策展页面均为纯静态部署在 GitHub Pages，无需后端即可使用。
+> 策展页面支持可选的 AI 增强（需配置 API Key），不配置也能正常策展。
+> 画架的「在线生成画作」功能需要后端服务——把 `server/` 部署到任意支持 Node 的平台，再通过 URL 参数 `?apiBase=` 连接即可。
 
 ## License 🪪
 
