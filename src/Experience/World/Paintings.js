@@ -16,7 +16,11 @@ export default class Paintings {
     }
 
     async loadPaintingData() {
-        const response = await fetch('/textures/paintings/painting_data.json')
+        // Support ?paintings=https://xxx/paintings.json for remote config
+        const urlParams = new URLSearchParams(window.location.search)
+        const remotePaintings = urlParams.get('paintings')
+        const dataUrl = remotePaintings || './textures/paintings/painting_data.json'
+        const response = await fetch(dataUrl)
         this.paintingData = await response.json()
         this.createPaintingsFromData()
     }
@@ -46,8 +50,13 @@ export default class Paintings {
         })
 
         const textureLoader = new THREE.TextureLoader()
+        // imageFile can be a relative path (textures/paintings/pic.jpg)
+        // or a full URL (https://example.com/pic.jpg)
+        const imgUrl = paintingData.imageFile.startsWith('http')
+            ? paintingData.imageFile
+            : `./${paintingData.imageFile}`
         textureLoader.load(
-            `/${paintingData.imageFile}`,
+            imgUrl,
             (texture) => {
                 canvasMaterial.map = texture
                 canvasMaterial.emissiveMap = texture

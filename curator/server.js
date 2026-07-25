@@ -6,16 +6,20 @@ import { dirname, join, resolve } from 'node:path'
 import { spawn, execSync, execFile } from 'node:child_process'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const NEURO_ROOT = resolve(__dirname, '..')
-const PAINTINGS_DIR = join(NEURO_ROOT, 'public', 'textures', 'paintings')
+const NEURO_ROOT = process.env.NEURO_ROOT || resolve(__dirname, '..')
+const PAINTINGS_DIR = process.env.PAINTINGS_DIR || join(NEURO_ROOT, 'public', 'textures', 'paintings')
 const CONFIG_FILE = join(PAINTINGS_DIR, 'painting_data.json')
 const VITE_BIN = join(NEURO_ROOT, 'node_modules', 'vite', 'bin', 'vite.js')
-const NODE_BIN = '/Users/nxhuang/.workbuddy/binaries/node/versions/22.22.2/bin/node'
+const NODE_BIN = process.execPath
 
-const BACKEND = 'http://localhost:3001'
-const GALLERY = 'http://localhost:5173'
+const BACKEND = process.env.BACKEND_URL || 'http://localhost:3001'
+const GALLERY = process.env.GALLERY_URL || 'http://localhost:5173'
 const CURATOR_PORT = process.env.CURATOR_PORT || 4000
-const CURL_BIN = '/usr/bin/curl'
+const CURL_BIN = process.env.CURL_BIN || '/usr/bin/curl'
+// When deployed remotely, set PUBLIC_URL to the curator's public address so
+// imageFile in painting_data.json can be a full URL (e.g. https://curator.example.com/paintings/picture1.jpg).
+// When empty (local dev), imageFile stays as a relative path.
+const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/$/, '')
 
 // Fixed wall positions (back wall x3, front wall x3). The curator only swaps
 // the content of these slots, so the gallery layout stays valid.
@@ -73,7 +77,12 @@ function killPort(port) {
     }
 }
 
+function isLocal(url) {
+    return /localhost|127\.0\.0\.1/.test(url)
+}
+
 function spawnGallery() {
+    if (!isLocal(GALLERY)) return null // remote gallery — can't spawn
     if (galleryChild.ref && !galleryChild.ref.killed) return galleryChild.ref
     const child = spawn(NODE_BIN, [VITE_BIN], {
         cwd: NEURO_ROOT,
@@ -86,6 +95,10 @@ function spawnGallery() {
 
 async function ensureGallery() {
     if (await httpOK(GALLERY)) return true
+    if (!isLocal(GALLERY)) {
+        // Remote gallery not reachable — can't spawn it
+        return false
+    }
     spawnGallery()
     const ok = await waitUp(GALLERY, { timeout: 90000 })
     // Backend is spawned by Vite's plugin; wait for it too.
@@ -94,19 +107,21 @@ async function ensureGallery() {
 }
 
 // After rewriting painting_data.json, we do NOT kill & respawn the gallery.
-// Instead we rely on Vite's built-in watcher: changes under public/ trigger a
-// full page reload → Paintings.loadPaintingData() re-fetches the fresh JSON.
-// This avoids fragile process management (port races, orphan children, etc.)
-// while keeping the experience smooth for the user.
+// For local galleries: Vite's watcher detects file changes under public/ and
+// triggers a full page reload → Paintings.loadPaintingData() re-fetches JSON.
+// For remote galleries: the gallery URL should include ?paintings=<url> pointing
+// to a publicly accessible JSON; refresh just confirms the gallery is up.
 async function refreshGallery() {
-    // If the gallery isn't running at all, start it.
     if (!(await httpOK(GALLERY))) {
         return ensureGallery()
     }
-    // Gallery is already running — Vite will auto-reload on the file write.
-    // Give it a moment to detect the change and reload.
-    await new Promise((r) => setTimeout(r, 3000))
-    // Confirm it survived the reload cycle.
+    if (isLocal(GALLERY)) {
+        // Local gallery — Vite will auto-reload on the file write.
+        await new Promise((r) => setTimeout(r, 3000))
+    } else {
+        // Remote gallery — just confirm it's still up after config write.
+        await new Promise((r) => setTimeout(r, 1000))
+    }
     return await httpOK(GALLERY)
 }
 
@@ -306,7 +321,9 @@ async function curate({ theme, count = 6, language = '中文', scene = 'gallery'
             aiModel: p.aiModel || 'Photograph',
             prompt: p.prompt || '',
             ...(isURL(p.repoUrl) ? { repoUrl: p.repoUrl.trim() } : {}),
-            imageFile: `textures/paintings/${file}`,
+            imageFile: PUBLIC_URL
+                ? `${PUBLIC_URL}/paintings/${file}`
+                : `textures/paintings/${file}`,
             source: real.source,
             sourceTitle: real.sourceTitle,
             position: POSITIONS[i]
@@ -330,13 +347,30 @@ async function curate({ theme, count = 6, language = '中文', scene = 'gallery'
         // 5) Refresh the gallery so it loads the fresh config.
         logLine(res, { type: 'log', step: 'restart', message: '配置已写入，画廊正在自动加载新展览…' })
         const ok = await refreshGallery()
+
+        // Build the gallery URL with appropriate params.
+        // For remote gallery: include ?paintings=<curator>/painting_data.json so it loads our config.
+        // For local gallery: Vite auto-reloads, no params needed.
+        let galleryUrl = GALLERY
+        if (!isLocal(GALLERY)) {
+            const paintingsUrl = PUBLIC_URL
+                ? `${PUBLIC_URL}/painting_data.json`
+                : `http://localhost:${CURATOR_PORT}/painting_data.json`
+            const sep = GALLERY.includes('?') ? '&' : '?'
+            galleryUrl = `${GALLERY}${sep}paintings=${paintingsUrl}`
+        }
+        if (scene && scene !== 'gallery') {
+            const sep = galleryUrl.includes('?') ? '&' : '?'
+            galleryUrl += `${sep}scene=${scene}`
+        }
+
     logLine(res, {
         type: 'done',
         ok,
         theme,
         count: items.length,
         scene,
-        galleryUrl: GALLERY,
+        galleryUrl,
         message: ok ? '展览已生成并启动！' : '配置已写入，但画廊重启未完成，请稍后刷新。'
     })
 }
@@ -397,6 +431,45 @@ const server = http.createServer(async (req, res) => {
         } catch {
             res.statusCode = 500
             return res.end('curator page missing')
+        }
+    }
+
+    // Serve paintings as static files (for remote deployment).
+    // Route: /paintings/<filename> → public/textures/paintings/<filename>
+    if (req.method === 'GET' && req.url.startsWith('/paintings/')) {
+        const filename = req.url.slice('/paintings/'.length).split('?')[0]
+        // Prevent path traversal
+        if (filename.includes('..') || filename.includes('/')) {
+            res.statusCode = 403
+            return res.end('Forbidden')
+        }
+        const filePath = join(PAINTINGS_DIR, filename)
+        try {
+            const data = await readFile(filePath)
+            const ext = filename.split('.').pop().toLowerCase()
+            const mime = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', json: 'application/json' }[ext] || 'application/octet-stream'
+            res.statusCode = 200
+            res.setHeader('Content-Type', mime)
+            res.setHeader('Cache-Control', 'no-cache')
+            return res.end(data)
+        } catch {
+            res.statusCode = 404
+            return res.end('Not found')
+        }
+    }
+
+    // Serve painting_data.json directly for remote galleries.
+    if (req.method === 'GET' && (req.url === '/painting_data.json' || req.url === '/api/painting_data')) {
+        try {
+            const data = await readFile(CONFIG_FILE)
+            res.statusCode = 200
+            res.setHeader('Content-Type', 'application/json')
+            res.setHeader('Access-Control-Allow-Origin', '*')
+            return res.end(data)
+        } catch {
+            res.statusCode = 404
+            res.setHeader('Content-Type', 'application/json')
+            return res.end(JSON.stringify({ error: 'painting_data.json not found' }))
         }
     }
 

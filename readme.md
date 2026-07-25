@@ -181,7 +181,7 @@ the curator on its own port.
 
 ## 🤖 Agent Skill — 自动策展
 
-NeuroGallery 内置一个 Agent Skill（`skill/SKILL.md`），让 AI Agent 能够通过自然语言指令自动策划 3D 虚拟展览。
+NeuroGallery 内置一个 Agent Skill（`skill/SKILL.md`），让 AI Agent 能够通过自然语言指令自动策划 3D 虚拟展览。支持**在线版**和**本地部署**两种模式。
 
 ### 能力
 
@@ -190,13 +190,39 @@ NeuroGallery 内置一个 Agent Skill（`skill/SKILL.md`），让 AI Agent 能�
 - 自动写入画廊配置并热重载
 - 支持四种场景切换
 
-### 快速使用
+### 在线版（无需本地部署）
+
+画廊已部署在 GitHub Pages：
+```
+https://vvlife.github.io/NeuroGallery/
+```
+
+策展服务和后端代理部署在 Railway（或其他 Node 平台）：
+```sh
+# 检查在线策展服务状态
+curl -s https://<CURATOR_URL>/api/status
+
+# 在线策展
+curl -s -N -X POST https://<CURATOR_URL>/api/curate \
+  -H "Content-Type: application/json" \
+  -d '{"theme":"太空探索","count":6,"language":"中文","scene":"space"}'
+```
+
+画廊支持 URL 参数配置：
+
+| 参数 | 说明 | 示例 |
+|------|------|------|
+| `scene` | 初始场景 | `?scene=space` |
+| `paintings` | 远程展品 JSON | `?paintings=https://curator.../painting_data.json` |
+| `apiBase` | 远程后端 API | `?apiBase=https://api.../api` |
+
+### 本地部署
 
 ```sh
-# 1. 启动服务
+# 启动所有服务（画廊 + 后端 + 策展）
 npm run dev
 
-# 2. 通过 API 策展
+# 通过 API 策展
 curl -s -N -X POST http://localhost:4000/api/curate \
   -H "Content-Type: application/json" \
   -d '{"theme":"太空探索","count":6,"language":"中文","scene":"space"}'
@@ -210,8 +236,13 @@ Agent 读取 `skill/SKILL.md` 后即可按照标准流程操作策展系统。�
 |----------|----------|
 | 艺术 / 绘画 / 经典展览 | 🏛️ 经典画廊 |
 | 自然 / 植物 / 轻松主题 | 🌿 动森花园 |
-| 太空 / 科技 / 未来 | 🚀 太空站 |
+| 太空 / 科技 / 未来 / 深海 | 🚀 太空站 |
 | 赛博朋克 / 霓虹 / 科幻 | 🌃 赛博朋克 |
+
+### 部署指南
+
+- **画廊（GitHub Pages，纯静态）**：push 到 `main` 分支 → GitHub Actions 自动构建部署
+- **策展服务 + 后端代理（Railway / Render 等）**：需要 Node.js 运行时，环境变量配置见 `skill/SKILL.md`
 
 ## Technology Stack 💻
 
@@ -220,18 +251,19 @@ Agent 读取 `skill/SKILL.md` 后即可按照标准流程操作策展系统。�
 -   **AI Image Generation**: OpenAI-compatible image API, proxied through a small backend in `server/` (the key stays server-side)
 -   **AI Curator**: Wikimedia Commons real-image search + text AI curation
 -   **Agent Skill**: `skill/SKILL.md` for automated exhibition creation
+-   **Deployment**: GitHub Pages (static) + Railway/Vercel (Node services)
 -   **Control Panel**: lil-gui
 -   **Core Language**: JavaScript (ES6+)
 
 ## 🌐 在线预览 / Live Demo
 
-公开预览地址（纯静态部署于 CloudStudio，墙上的 6 幅作品展示完全正常）：
+**GitHub Pages（自动部署）**：
+```
+https://vvlife.github.io/NeuroGallery/
+```
 
-**https://e6e51c4b571c46499d6cbbe283224353.app.codebuddy.work**
-
-> 画架的「在线生成画作」由后端代理 `server/index.js` 提供——密钥只在后端、不会进入前端 bundle，比原先的浏览器直连更安全。
-> 该 CloudStudio 预览为**纯静态托管**，不含 Node 后端，因此公网预览中画架生成功能暂不可用；浏览 6 幅作品不受影响。
-> 若要在公网完整使用生成功能：把 `server/` 部署到任意支持 Node 的平台（Vercel / Railway / Render 等），再把 `easel_config.json` 的 `apiBase` 改成该后端地址即可。
+> 画廊前端为纯静态部署，支持 URL 参数配置远程后端和展品数据。
+> 画架的「在线生成画作」和「AI 策展」需要后端服务——把 `server/` + `curator/` 部署到任意支持 Node 的平台（Railway / Vercel / Render 等），再通过 URL 参数 `?apiBase=` 和 `?paintings=` 连接即可。
 
 ## License 🪪
 

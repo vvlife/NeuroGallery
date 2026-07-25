@@ -1,0 +1,16 @@
+# Railway deployment for curator + backend services
+# Deploy with: railway up (after `railway init`)
+
+[deploy]
+startCommand = "node curator/server.js"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+[env]
+# Set these in Railway dashboard or via `railway variables set`
+# AGNES_API_KEY=your_key_here
+# BACKEND_URL=https://your-backend.railway.app
+# GALLERY_URL=https://vvlife.github.io/NeuroGallery
+# PUBLIC_URL=https://your-curator.railway.app
+# CURATOR_PORT=$PORT
+# PAINTINGS_DIR=/data/paintings

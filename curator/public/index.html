@@ -191,20 +191,29 @@
         <div class="status">
             <span class="pill" id="pill-backend">后端：检测中…</span>
             <span class="pill" id="pill-gallery">画廊：检测中…</span>
-            <a class="openlink" id="openlink" href="http://localhost:5173" target="_blank" rel="noreferrer" style="margin-left:auto;align-self:center;">在新标签打开画廊 ↗</a>
+            <a class="openlink" id="openlink" href="#" target="_blank" rel="noreferrer" style="margin-left:auto;align-self:center;">在新标签打开画廊 ↗</a>
         </div>
         <div class="log" id="log"></div>
         <div class="preview" id="preview">
             <div class="placeholder">展览生成后，这里会实时加载 3D 画廊预览。</div>
-            <iframe id="galleryFrame" src="http://localhost:5173"></iframe>
+            <iframe id="galleryFrame" src="about:blank"></iframe>
 <script>
 // Decide API + gallery base from how the page is served.
-// - Served under /curator (via the Vite gallery origin on :5173): use
-//   /curator-api for the API and the same-origin gallery.
-// - Served standalone on :4000: use /api and the gallery on :5173.
+// Priority: URL params (?gallery= & ?backend=) > route-based defaults.
+const urlParams = new URLSearchParams(location.search)
 const ON_CURATOR_ROUTE = location.pathname.startsWith('/curator')
-const API_BASE = ON_CURATOR_ROUTE ? '/curator-api' : '/api'
-const GALLERY_BASE = (location.port === '5173' || ON_CURATOR_ROUTE) ? '/' : 'http://localhost:5173'
+
+// Gallery URL: URL param > same-origin (when served from gallery) > localhost:5173
+const GALLERY_BASE = urlParams.get('gallery')
+    || ((location.port === '5173' || ON_CURATOR_ROUTE) ? '/' : 'http://localhost:5173')
+
+// API base: URL param > /curator-api (when under /curator) > /api
+const API_BASE = urlParams.get('backend')
+    || (ON_CURATOR_ROUTE ? '/curator-api' : '/api')
+
+// For external gallery links, append scene param via the opener
+const GALLERY_URL = (GALLERY_BASE.startsWith('http') && !GALLERY_BASE.endsWith('/'))
+    ? GALLERY_BASE : GALLERY_BASE
 </script>
         </div>
     </div>
@@ -280,10 +289,13 @@ $('go').addEventListener('click', async () => {
                 else if (obj.type === 'done') {
                     addLog('✅ ' + obj.message, 'ok')
                     if (obj.ok) {
-                        const scene = $('scene').value
-                        const sceneParam = scene ? '?scene=' + scene : ''
+                        // Use the galleryUrl from the server (includes ?paintings= for remote)
+                        const galleryUrl = obj.galleryUrl || fullGalleryUrl()
                         preview.classList.add('show')
-                        frame.src = GALLERY_BASE + sceneParam + (sceneParam ? '&' : '?') + 't=' + Date.now()
+                        frame.src = galleryUrl + (galleryUrl.includes('?') ? '&' : '?') + 't=' + Date.now()
+                        // Update the open link
+                        $('openlink').href = galleryUrl
+                        addLog('🔗 ' + galleryUrl, 'ok')
                     }
                 } else addLog(obj.message || '')
             }
@@ -297,8 +309,20 @@ $('go').addEventListener('click', async () => {
 })
 
 // Initialise gallery preview + external link to match the current origin.
-$('galleryFrame').src = GALLERY_BASE
-$('openlink').href = GALLERY_BASE
+// GALLERY_BASE may be '/' (same origin), an absolute URL, or a path.
+function fullGalleryUrl(extra) {
+    let base = GALLERY_BASE
+    if (base === '/' || base.startsWith('/')) {
+        base = location.origin + base
+    }
+    // Strip trailing slash
+    base = base.replace(/\/$/, '')
+    const sep = base.includes('?') ? '&' : '?'
+    return base + (extra || '')
+}
+
+$('galleryFrame').src = fullGalleryUrl()
+$('openlink').href = fullGalleryUrl()
 
 refreshStatus()
 setInterval(refreshStatus, 8000)

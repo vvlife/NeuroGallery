@@ -118,8 +118,9 @@ function curatorServerPlugin() {
 export default defineConfig({
     plugins: [backendServerPlugin(), curatorServerPlugin()],
 
-    // Base path for production
-    base: './',
+    // Base path for production — override with VITE_BASE env for GitHub Pages etc.
+    // './' works for most static hosts; '/NeuroGallery/' for GitHub Pages project sites.
+    base: process.env.VITE_BASE || './',
 
     // Development server config
     server: {

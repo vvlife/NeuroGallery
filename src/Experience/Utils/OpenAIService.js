@@ -21,8 +21,19 @@ export default class OpenAIService {
      */
     async loadConfig() {
         if (this.configLoaded) return
+
+        // URL parameter ?apiBase=https://xxx/api takes highest priority
+        const urlParams = new URLSearchParams(window.location.search)
+        const urlApiBase = urlParams.get('apiBase')
+        if (urlApiBase && urlApiBase.trim() !== '') {
+            this.apiBase = urlApiBase.trim().replace(/\/$/, '')
+            this.configLoaded = true
+            return
+        }
+
+        // Fallback to easel_config.json
         try {
-            const res = await fetch('/textures/paintings/easel_config.json')
+            const res = await fetch('./textures/paintings/easel_config.json')
             if (res.ok) {
                 const cfg = await res.json()
                 if (cfg.apiBase && cfg.apiBase.trim() !== '') {
