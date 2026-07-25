@@ -14,6 +14,15 @@ This project was developed for the **Computer Graphics** course at the **Faculty
 ### 🎨 Interactive AI Art Generation
 Powered by an OpenAI-compatible image API, users can step up to the central easel, enter a descriptive prompt, and watch as a unique piece of art is generated and displayed on the canvas in real-time. The endpoint and model are fully configurable (see **Configuration**).
 
+### 🖼️ Multiple Selectable Scenes
+Switch between four immersive environments with the scene selector in the top-right corner:
+- **🏛️ Classic Gallery** — the original museum room with paintings hung on concrete walls
+- **🌿 Animal Crossing Garden** — a sunny village green with trees, flowers, a white fence, and wooden easel stands
+- **🚀 Space Station** — deep space with twinkling stars, orbiting planets, asteroids, and floating holographic painting pods
+- **🌃 Cyberpunk City** — a rainy neon metropolis with skyscrapers, glowing signs, and holographic billboards
+
+Each scene has its own lighting, atmosphere, and display style; the AI easel and paintings automatically adapt to the active scene.
+
 ### 🚶 Immersive 3D Exploration
 Navigate the gallery in a first-person perspective with familiar, intuitive controls. Move with WASD, look around with the mouse, jump with the spacebar, and sprint with the shift key for a fluid and engaging experience.
 
