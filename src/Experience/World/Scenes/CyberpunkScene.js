@@ -210,7 +210,8 @@ export default class CyberpunkScene extends BaseScene {
                     color: '#ffffff',
                     roughness: 0.2,
                     emissive: '#111111',
-                    emissiveIntensity: 0.3
+                    emissiveIntensity: 0.3,
+                    visible: false
                 })
             )
             screen.position.set(0, 3.2, 0.06)

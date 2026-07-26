@@ -277,7 +277,8 @@ export default class SpaceScene extends BaseScene {
                     color: '#ffffff',
                     roughness: 0.4,
                     emissive: '#222222',
-                    emissiveIntensity: 0.2
+                    emissiveIntensity: 0.2,
+                    visible: false
                 })
             )
             screen.position.set(0, 1.6, 0.06)

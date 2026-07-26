@@ -7,8 +7,23 @@ const experience = new Experience(document.querySelector('canvas.webgl'))
 // Keyboard shortcuts for GUI and other controls
 document.addEventListener('keydown', (event) => {
     // Only handle shortcuts when not in an input field
-    if (event.target.tagName.toLowerCase() === 'input') return
-    
+    const tag = event.target.tagName.toLowerCase()
+    if (tag === 'input' || tag === 'textarea') return
+
+    // E opens the intro card for the painting the player is standing in
+    // front of. If the card is already open, leave it to PresentationUI's
+    // own E handler (opens the repo link) instead of re-opening the card.
+    if (event.code === 'KeyE') {
+        const world = experience.world
+        const ui = experience.presentationUI
+        if (world && ui && !ui._repoUrl && world._nearestPainting) {
+            event.preventDefault()
+            event.stopPropagation()
+            world.openNearestPainting()
+            return
+        }
+    }
+
     // Don't interfere with camera controls when locked
     if (experience.camera?.controls?.isLocked) {
         switch (event.code) {

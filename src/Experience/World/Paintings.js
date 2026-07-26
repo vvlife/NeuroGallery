@@ -235,6 +235,14 @@ export default class Paintings {
             group.position.copy(slotWorldPos).add(forward)
             group.quaternion.copy(slotWorldQuat)
 
+            // Scale the artwork to fit inside the scene's display frame —
+            // the gallery canvas (3.5x2.2) is larger than some scene slots,
+            // which made it clip through the frame bars.
+            const slotW = slot.geometry?.parameters?.width || 3.5
+            const slotH = slot.geometry?.parameters?.height || 2.2
+            const fitScale = Math.min(slotW / 3.5, slotH / 2.2) * 0.96
+            group.scale.setScalar(fitScale)
+
             // Make the artwork self-lit so it stays visible in dark scenes
             const canvas = group.userData.canvas
             if (canvas) {
@@ -263,6 +271,7 @@ export default class Paintings {
             this.scene.add(group)
             group.position.set(...group.userData.defaultPosition)
             group.rotation.set(0, group.userData.defaultRotation, 0)
+            group.scale.setScalar(1)
 
             const canvas = group.userData.canvas
             if (canvas) {

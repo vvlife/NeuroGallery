@@ -34,7 +34,6 @@ export default class AnimalCrossingScene extends BaseScene {
         this.setFlowers()
         this.setFenceSafe()
         this.setPond()
-        this.setHills()
         this.setClouds()
         this.setBalloons()
         this.setVillagers()      // animal NPCs wandering the plaza
@@ -63,7 +62,7 @@ export default class AnimalCrossingScene extends BaseScene {
         env.ambientLight.color.setHex(0xfff8e7)
 
         this.scene.environment = null
-        this.scene.background = new THREE.Color('#87CEEB')
+        // Background is set by setSky() (HDRI) — nothing to do here
         if (env.environmentMap.updateMaterials) {
             env.environmentMap.updateMaterials()
         }
@@ -76,10 +75,20 @@ export default class AnimalCrossingScene extends BaseScene {
     setGround() {
         const groundGeometry = new THREE.PlaneGeometry(60, 60, 32, 32)
         const groundMaterial = new THREE.MeshStandardMaterial({
-            color: '#7ec850',
+            color: '#a8e088',
             roughness: 0.9,
             metalness: 0.0
         })
+
+        // Real grass texture (CC0, Poly Haven) tinted toward the AC palette
+        const grassTexture = this.resources.items.acGrass
+        if (grassTexture) {
+            grassTexture.wrapS = THREE.RepeatWrapping
+            grassTexture.wrapT = THREE.RepeatWrapping
+            grassTexture.repeat.set(10, 10)
+            grassTexture.colorSpace = THREE.SRGBColorSpace
+            groundMaterial.map = grassTexture
+        }
 
         const positions = groundGeometry.attributes.position
         for (let i = 0; i < positions.count; i++) {
@@ -121,21 +130,20 @@ export default class AnimalCrossingScene extends BaseScene {
     }
 
     setSky() {
-        const skyGeometry = new THREE.SphereGeometry(90, 32, 32)
-        const skyMaterial = new THREE.MeshBasicMaterial({
-            color: '#87CEEB',
-            side: THREE.BackSide,
-            fog: false
-        })
-        const sky = new THREE.Mesh(skyGeometry, skyMaterial)
-        this.add(sky)
-
-        const sun = new THREE.Mesh(
-            new THREE.SphereGeometry(3, 16, 16),
-            new THREE.MeshBasicMaterial({ color: '#ffeb3b', fog: false })
-        )
-        sun.position.set(30, 35, 20)
-        this.add(sun)
+        // Real sky HDRI (CC0, Poly Haven) as the backdrop — no fake dome
+        const skyTexture = this.resources.items.acSky
+        if (skyTexture) {
+            skyTexture.mapping = THREE.EquirectangularReflectionMapping
+            this.scene.background = skyTexture
+        } else {
+            const skyGeometry = new THREE.SphereGeometry(90, 32, 32)
+            const skyMaterial = new THREE.MeshBasicMaterial({
+                color: '#87CEEB',
+                side: THREE.BackSide,
+                fog: false
+            })
+            this.add(new THREE.Mesh(skyGeometry, skyMaterial))
+        }
     }
 
     // ── Plaza: fountain + notice board ────────────────────────────────
@@ -300,7 +308,8 @@ export default class AnimalCrossingScene extends BaseScene {
                 new THREE.MeshStandardMaterial({
                     color: '#ffffff',
                     roughness: 0.9,
-                    side: THREE.DoubleSide
+                    side: THREE.DoubleSide,
+                    visible: false
                 })
             )
             painting.position.set(0, 1.76, frameZ)
@@ -582,24 +591,7 @@ export default class AnimalCrossingScene extends BaseScene {
         this.add(pondGroup)
     }
 
-    // ── Rolling hills on the horizon ──────────────────────────────────
-    setHills() {
-        const hillMaterial = new THREE.MeshStandardMaterial({ color: '#6ab04c', roughness: 1 })
-        const hills = [
-            { x: -30, z: -30, r: 14 }, { x: 0, z: -38, r: 18 },
-            { x: 30, z: -30, r: 14 }, { x: -36, z: 10, r: 12 },
-            { x: 36, z: 10, r: 12 }, { x: 0, z: 40, r: 16 }
-        ]
-        hills.forEach(({ x, z, r }) => {
-            const hill = new THREE.Mesh(
-                new THREE.SphereGeometry(r, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2),
-                hillMaterial
-            )
-            hill.scale.y = 0.35
-            hill.position.set(x, -0.5, z)
-            this.add(hill)
-        })
-    }
+    // ── Rolling hills removed: the HDRI sky already carries a horizon ──
 
     setClouds() {
         const cloudMaterial = new THREE.MeshStandardMaterial({
@@ -799,13 +791,16 @@ export default class AnimalCrossingScene extends BaseScene {
             villager.add(arm)
         }
 
-        // Stubby feet
+        // Stubby feet (kept for the walking animation)
+        const feet = []
         for (const side of [-1, 1]) {
             const foot = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 8), bodyMaterial)
             foot.scale.set(1, 0.6, 1.3)
             foot.position.set(side * 0.18, 0.07, 0.05)
             villager.add(foot)
+            feet.push(foot)
         }
+        villager.userData.feet = feet
 
         return villager
     }
@@ -858,10 +853,15 @@ export default class AnimalCrossingScene extends BaseScene {
         // Villagers wander: walk → hesitate → pick a new spot
         this.villagers.forEach((villager) => {
             const walk = villager.userData.walk
+            const feet = villager.userData.feet
 
             if (now < walk.pauseUntil) {
-                // Idle: tiny breathing bounce
-                villager.position.y = Math.abs(Math.sin(now * 0.002 + walk.hopPhase)) * 0.02
+                // Idle: subtle breathing sway, feet planted
+                villager.rotation.z = Math.sin(now * 0.0015 + walk.hopPhase) * 0.015
+                if (feet) {
+                    feet[0].position.z = 0.05
+                    feet[1].position.z = 0.05
+                }
                 return
             }
 
@@ -879,7 +879,11 @@ export default class AnimalCrossingScene extends BaseScene {
                 // Arrived — hesitate before the next decision (AC's "ma")
                 walk.target = null
                 walk.pauseUntil = now + 1500 + Math.random() * 4000
-                villager.position.y = 0
+                villager.rotation.z = 0
+                if (feet) {
+                    feet[0].position.z = 0.05
+                    feet[1].position.z = 0.05
+                }
                 return
             }
 
@@ -890,9 +894,14 @@ export default class AnimalCrossingScene extends BaseScene {
             const targetRotation = Math.atan2(toTarget.x, toTarget.z)
             villager.rotation.y += (targetRotation - villager.rotation.y) * Math.min(1, delta * 8)
 
-            // Bouncy AC hop-walk
-            walk.hopPhase += delta * 10
-            villager.position.y = Math.abs(Math.sin(walk.hopPhase)) * 0.09
+            // Walk (not hop): gentle body bob + sway, feet stepping alternately
+            walk.hopPhase += delta * 9
+            villager.position.y = Math.abs(Math.sin(walk.hopPhase)) * 0.025
+            villager.rotation.z = Math.sin(walk.hopPhase) * 0.04
+            if (feet) {
+                feet[0].position.z = 0.05 + Math.sin(walk.hopPhase) * 0.14
+                feet[1].position.z = 0.05 - Math.sin(walk.hopPhase) * 0.14
+            }
         })
     }
 }

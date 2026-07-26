@@ -53,4 +53,16 @@ export default [
         type: 'audio',
         path: '/audio/audio.mp3'
     },
+
+    // Animal Crossing scene textures (CC0, Poly Haven)
+    {
+        name: 'acGrass',
+        type: 'texture',
+        path: '/textures/animalcrossing/grass_diff.jpg'
+    },
+    {
+        name: 'acSky',
+        type: 'rgbeTexture',
+        path: '/textures/animalcrossing/sky.hdr'
+    },
 ]

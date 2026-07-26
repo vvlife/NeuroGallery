@@ -74,16 +74,17 @@ export default class World {
         this.checkPaintingProximity()
     }
 
+    // Show a lightweight action hint near a painting (no auto popup).
+    // Full intro only opens on click or the E key.
     checkPaintingProximity() {
         const ui = this.experience.presentationUI
         const camera = this.experience.camera
         if (!ui || !camera || !this.paintings) return
 
+        // Don't fight with the click-to-zoom presentation mode
         if (camera.presentationMode && camera.presentationMode.active) {
-            if (this._nearbyPaintingId) {
-                ui.hide()
-                this._nearbyPaintingId = null
-            }
+            this.hidePaintingHint()
+            this._hintPaintingId = null
             return
         }
 
@@ -102,18 +103,58 @@ export default class World {
         }
 
         const SHOW_AT = 4.5
-        const HIDE_AT = 5.5
+        const RESET_AT = 6.0
 
         if (nearest && nearestDist < SHOW_AT) {
             const data = nearest.userData.painting
-            if (this._nearbyPaintingId !== data.id && !ui.isDismissed(data.id)) {
-                ui.show(data)
-                this._nearbyPaintingId = data.id
+            this._nearestPainting = nearest
+
+            // Only hint once per painting per visit, and never while a
+            // hint is already on screen (walking past two paintings in a
+            // row must not fire two hints).
+            if (this._hintPaintingId !== data.id && !this._hintVisible) {
+                this.showPaintingHint()
+                this._hintPaintingId = data.id
             }
-        } else if (this._nearbyPaintingId && nearestDist > HIDE_AT) {
-            ui.hide()
-            ui.clearDismissed()
-            this._nearbyPaintingId = null
+        } else {
+            this._nearestPainting = null
+            // Walked far enough away — the painting may be hinted again later
+            if (this._hintPaintingId && nearestDist > RESET_AT) {
+                this._hintPaintingId = null
+            }
+        }
+    }
+
+    showPaintingHint() {
+        const el = document.getElementById('paintingHint')
+        if (!el) return
+
+        this._hintVisible = true
+        el.classList.remove('fading')
+        el.classList.add('visible')
+
+        clearTimeout(this._hintTimer)
+        this._hintTimer = setTimeout(() => {
+            this.hidePaintingHint()
+        }, 3000)
+    }
+
+    hidePaintingHint() {
+        const el = document.getElementById('paintingHint')
+        if (!el) return
+
+        el.classList.remove('visible')
+        el.classList.add('fading')
+        this._hintVisible = false
+    }
+
+    // Called by the E key (see main.js): open the intro for the painting
+    // the player is standing in front of.
+    openNearestPainting() {
+        if (this._nearestPainting) {
+            const data = this._nearestPainting.userData.painting
+            this.hidePaintingHint()
+            this.experience.presentationUI.show(data)
         }
     }
 }
