@@ -264,7 +264,7 @@ export default class AnimalCrossingScene extends BaseScene {
                     new THREE.CylinderGeometry(0.06, 0.08, 2.6, 8),
                     woodMaterial
                 )
-                leg.position.set(side * 1.2, 1.2, 0.25)
+                leg.position.set(side * 1.2, 1.2, 0.14)
                 leg.rotation.z = -side * 0.22
                 leg.rotation.x = 0.12
                 leg.castShadow = true
@@ -285,7 +285,7 @@ export default class AnimalCrossingScene extends BaseScene {
                 woodMaterial
             )
             crossbar.rotation.z = Math.PI / 2
-            crossbar.position.set(0, 0.95, 0.32)
+            crossbar.position.set(0, 0.9, 0.12)
             crossbar.castShadow = true
             stand.add(crossbar)
 

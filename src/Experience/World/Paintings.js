@@ -231,7 +231,7 @@ export default class Paintings {
             }
             this.scene.add(group)
 
-            const forward = new THREE.Vector3(0, 0, 0.07).applyQuaternion(slotWorldQuat)
+            const forward = new THREE.Vector3(0, 0, 0.15).applyQuaternion(slotWorldQuat)
             group.position.copy(slotWorldPos).add(forward)
             group.quaternion.copy(slotWorldQuat)
 
@@ -240,7 +240,7 @@ export default class Paintings {
             // which made it clip through the frame bars.
             const slotW = slot.geometry?.parameters?.width || 3.5
             const slotH = slot.geometry?.parameters?.height || 2.2
-            const fitScale = Math.min(slotW / 3.5, slotH / 2.2) * 0.96
+            const fitScale = Math.min(slotW / 3.5, slotH / 2.2) * 0.94
             group.scale.setScalar(fitScale)
 
             // Make the artwork self-lit so it stays visible in dark scenes

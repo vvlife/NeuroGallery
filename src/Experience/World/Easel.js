@@ -66,8 +66,23 @@ export default class Easel {
         const canvasMaterial = new THREE.MeshStandardMaterial({
             color: 0xffffff,
             roughness: 0.8,
-            metalness: 0.0
+            metalness: 0.0,
+            side: THREE.DoubleSide
         })
+
+        // Default artwork so the easel never looks like a blank board;
+        // replaced once the visitor generates their own piece.
+        const defaultTexture = new THREE.TextureLoader().load(
+            '/textures/animalcrossing/easel-default.png',
+            (tex) => {
+                tex.colorSpace = THREE.SRGBColorSpace
+                canvasMaterial.map = tex
+                canvasMaterial.emissiveMap = tex
+                canvasMaterial.emissive = new THREE.Color(0xffffff)
+                canvasMaterial.emissiveIntensity = 0.35
+                canvasMaterial.needsUpdate = true
+            }
+        )
 
         this.canvas = new THREE.Mesh(canvasGeometry, canvasMaterial)
         this.canvas.position.set(0, 2.3, -1.22)
@@ -77,6 +92,15 @@ export default class Easel {
         this.canvas.name = 'easel-canvas'
 
         this.easelGroup.add(this.canvas)
+
+        // Back panel sharing the same material, so the artwork (and any
+        // generated image) is visible from behind the easel as well
+        this.backCanvas = new THREE.Mesh(canvasGeometry, canvasMaterial)
+        this.backCanvas.position.set(0, 2.3, -1.26)
+        this.backCanvas.rotation.set(-0.28, Math.PI, 0)
+        this.backCanvas.name = 'easel-canvas-back'
+
+        this.easelGroup.add(this.backCanvas)
 
         // Invisible, generous hit-box around the whole easel so it is easy to
         // click/tap — the actual easel canvas is small and hard to hit,
