@@ -24,9 +24,14 @@ export default class AnimalCrossingScene extends BaseScene {
 
         // Gameplay state
         this.apples = []
+        this.appleHitSpheres = []
         this.fallingApples = []
         this.growingApples = []
         this.appleCount = 0
+        this.flowers = []
+        this.flowerHitSpheres = []
+        this.flowerCount = 0
+        this.growingFlowers = []
         this.fishCount = 0
         this.pondWater = null
         this.fishingState = 'idle' // idle | waiting | biting
@@ -429,10 +434,13 @@ export default class AnimalCrossingScene extends BaseScene {
         const fruitColors = ['#ff4d4d', '#ffa53d', '#ffb3c7'] // apple / orange / peach
 
         const spots = [
-            [-10, -10, 0], [10, -10, 1], [-12, 5, 2], [12, 5, 0],
-            [-8, 12, 1], [8, 12, 2], [-15, -4, 2], [15, -4, 1],
-            [-5, -15, 0], [5, -15, 1], [0, 17, 2], [-18, 12, 0],
-            [18, 12, 1], [-22, -8, 2], [22, -8, 0]
+            // Reachable trees (inside the ±11.5 walkable boundary)
+            [-8, -7, 0], [8, -7, 1], [-10, 4, 2], [10, 4, 0],
+            [-7, 11, 1], [7, 11, 2],
+            // Backdrop trees (outside, for scenery)
+            [-14, -12, 2], [14, -12, 1], [-17, -3, 0], [17, -3, 1],
+            [-5, -16, 2], [5, -16, 0], [0, 18, 1], [-19, 10, 2],
+            [19, 10, 0]
         ]
 
         spots.forEach(([x, z, fruitIdx], index) => {
@@ -479,6 +487,21 @@ export default class AnimalCrossingScene extends BaseScene {
                 fruit.userData.parentTree = tree
                 tree.add(fruit)
                 this.apples.push(fruit)
+
+                // Invisible fat hit-sphere so the tiny fruit is easy to tap
+                const hitSphere = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.55, 6, 6),
+                    new THREE.MeshBasicMaterial({ visible: false })
+                )
+                hitSphere.position.copy(fruit.position)
+                hitSphere.userData.clickable = true
+                hitSphere.userData.type = 'apple'
+                hitSphere.userData.appleRef = fruit
+                tree.add(hitSphere)
+                this.appleHitSpheres.push(hitSphere)
+
+                // Keep the hit-sphere glued to its fruit (falling animation)
+                fruit.userData.hitSphere = hitSphere
             }
 
             tree.position.set(x, 0, z)
@@ -523,7 +546,22 @@ export default class AnimalCrossingScene extends BaseScene {
             const radius = 8 + Math.random() * 14
             flower.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius)
 
+            flower.userData.clickable = true
+            flower.userData.type = 'flower'
             this.add(flower)
+            this.flowers.push(flower)
+
+            // Invisible fat hit-sphere so the tiny flower is easy to tap
+            const hitSphere = new THREE.Mesh(
+                new THREE.SphereGeometry(0.55, 6, 6),
+                new THREE.MeshBasicMaterial({ visible: false })
+            )
+            hitSphere.position.set(flower.position.x, 0.4, flower.position.z)
+            hitSphere.userData.clickable = true
+            hitSphere.userData.type = 'flower'
+            hitSphere.userData.flowerRef = flower
+            this.add(hitSphere)
+            this.flowerHitSpheres.push(hitSphere)
         }
     }
 
@@ -572,7 +610,7 @@ export default class AnimalCrossingScene extends BaseScene {
         const pondGroup = new THREE.Group()
 
         const water = new THREE.Mesh(
-            new THREE.CircleGeometry(3.5, 24),
+            new THREE.CircleGeometry(2.8, 24),
             new THREE.MeshStandardMaterial({
                 color: '#5fbef5',
                 roughness: 0.15,
@@ -589,7 +627,7 @@ export default class AnimalCrossingScene extends BaseScene {
 
         // Sandy rim
         const rim = new THREE.Mesh(
-            new THREE.RingGeometry(3.5, 4.1, 24),
+            new THREE.RingGeometry(2.8, 3.4, 24),
             new THREE.MeshStandardMaterial({ color: '#e0c496', roughness: 0.95 })
         )
         rim.rotation.x = -Math.PI * 0.5
@@ -604,11 +642,12 @@ export default class AnimalCrossingScene extends BaseScene {
             )
             pad.rotation.x = -Math.PI * 0.5
             const angle = (i / 4) * Math.PI * 2
-            pad.position.set(Math.cos(angle) * 1.8, 0.03, Math.sin(angle) * 1.8)
+            pad.position.set(Math.cos(angle) * 1.4, 0.03, Math.sin(angle) * 1.4)
             pondGroup.add(pad)
         }
 
-        pondGroup.position.set(-17, 0, -6)
+        // Inside the player's walkable area (boundaries are ±11.5)
+        pondGroup.position.set(-8.5, 0, -7)
         this.add(pondGroup)
     }
 
@@ -832,13 +871,96 @@ export default class AnimalCrossingScene extends BaseScene {
         const hud = document.getElementById('collectHud')
         if (hud) hud.classList.add('visible')
         this.updateCollectHUD()
+
+        // Show the guide card once per session
+        if (!this._guideShown) {
+            const guide = document.getElementById('acGuide')
+            if (guide) {
+                guide.classList.add('visible')
+                const close = document.getElementById('acGuideClose')
+                if (close && !close._bound) {
+                    close._bound = true
+                    close.addEventListener('click', () => {
+                        guide.classList.remove('visible')
+                    })
+                }
+            }
+            this._guideShown = true
+        }
+
+        this._guideCheckTimer = 0
+    }
+
+    // Contextual hint near trees / pond / flowers
+    updateActionGuide(delta) {
+        this._guideCheckTimer = (this._guideCheckTimer || 0) - delta
+        if (this._guideCheckTimer > 0) return
+        this._guideCheckTimer = 0.3
+
+        const el = document.getElementById('actionGuide')
+        const textEl = document.getElementById('actionGuideText')
+        if (!el || !textEl) return
+
+        const camPos = this.experience.camera?.instance?.position
+        if (!camPos) return
+
+        let hint = null
+        const tmp = new THREE.Vector3()
+
+        // Pond (fishing)
+        if (this.pondWater) {
+            this.pondWater.getWorldPosition(tmp)
+            const d = Math.hypot(camPos.x - tmp.x, camPos.z - tmp.z)
+            if (d < 4.5) hint = '🎣 点击水面，开始钓鱼'
+        }
+
+        // Fruit trees (apple picking)
+        if (!hint) {
+            for (const sphere of this.appleHitSpheres) {
+                if (!sphere.visible) continue
+                const fruit = sphere.userData.appleRef
+                if (!fruit || fruit.userData.picked || fruit.userData.falling) continue
+                sphere.getWorldPosition(tmp)
+                const d = camPos.distanceTo(tmp)
+                if (d < 3.5) {
+                    hint = '🍎 点击树上的果子，把它摘下来'
+                    break
+                }
+            }
+        }
+
+        // Flowers
+        if (!hint) {
+            for (const flower of this.flowers) {
+                if (!flower.visible || flower.userData.picked) continue
+                tmp.set(flower.position.x, 0.4, flower.position.z)
+                const d = Math.hypot(camPos.x - tmp.x, camPos.z - tmp.z)
+                if (d < 2.0) {
+                    hint = '🌸 点击这朵花，摘下来'
+                    break
+                }
+            }
+        }
+
+        if (hint) {
+            if (this._currentGuide !== hint) {
+                textEl.textContent = hint
+                this._currentGuide = hint
+            }
+            el.classList.add('visible')
+        } else {
+            el.classList.remove('visible')
+            this._currentGuide = null
+        }
     }
 
     updateCollectHUD() {
         const appleEl = document.getElementById('appleCount')
         const fishEl = document.getElementById('fishCount')
+        const flowerEl = document.getElementById('flowerCount')
         if (appleEl) appleEl.textContent = this.appleCount
         if (fishEl) fishEl.textContent = this.fishCount
+        if (flowerEl) flowerEl.textContent = this.flowerCount
     }
 
     showGameplayToast(text) {
@@ -934,7 +1056,7 @@ export default class AnimalCrossingScene extends BaseScene {
         const sprite = new THREE.Sprite(material)
         sprite.scale.set(1.2, 1.2, 1)
 
-        const pondPos = new THREE.Vector3(-17, 0, -6)
+        const pondPos = new THREE.Vector3(-8.5, 0, -7)
         sprite.position.set(pondPos.x, 1.2, pondPos.z)
         sprite.userData.bornAt = this.time.elapsed
         this.add(sprite)
@@ -948,8 +1070,33 @@ export default class AnimalCrossingScene extends BaseScene {
             apple.position.copy(apple.userData.homePosition)
             apple.scale.setScalar(0.01)
             apple.visible = true
+            if (apple.userData.hitSphere) {
+                apple.userData.hitSphere.position.copy(apple.userData.homePosition)
+                apple.userData.hitSphere.visible = true
+            }
             this.growingApples.push(apple)
         }, 8000 + Math.random() * 7000)
+    }
+
+    pickFlower(flower) {
+        if (!flower || flower.userData.picked) return
+        flower.userData.picked = true
+        flower.visible = false
+
+        this.flowerCount++
+        this.updateCollectHUD()
+        this.showGameplayToast(`🌸 摘到一朵花！(${this.flowerCount})`)
+        this.respawnFlower(flower)
+    }
+
+    respawnFlower(flower) {
+        setTimeout(() => {
+            flower.userData.picked = false
+            flower.scale.setScalar(0.01)
+            flower.visible = true
+            // Pop back up with a quick grow animation handled in update()
+            this.growingFlowers.push(flower)
+        }, 12000 + Math.random() * 8000)
     }
 
     destroy() {
@@ -957,6 +1104,10 @@ export default class AnimalCrossingScene extends BaseScene {
         if (hud) hud.classList.remove('visible')
         const toast = document.getElementById('gameplayToast')
         if (toast) toast.classList.remove('visible')
+        const guide = document.getElementById('acGuide')
+        if (guide) guide.classList.remove('visible')
+        const actionGuide = document.getElementById('actionGuide')
+        if (actionGuide) actionGuide.classList.remove('visible')
         clearTimeout(this._fishingTimeout)
         clearTimeout(this._toastTimer)
         super.destroy()
@@ -966,6 +1117,8 @@ export default class AnimalCrossingScene extends BaseScene {
     update() {
         const delta = this.time.delta / 1000
         const now = this.time.elapsed
+
+        this.updateActionGuide(delta)
 
         // Clouds drift
         this.clouds.forEach((cloud) => {
@@ -1067,6 +1220,11 @@ export default class AnimalCrossingScene extends BaseScene {
             apple.userData.fallVelocity -= 9.8 * delta
             apple.position.y += apple.userData.fallVelocity * delta
 
+            // Hit-sphere follows the fruit while it drops
+            if (apple.userData.hitSphere) {
+                apple.userData.hitSphere.position.copy(apple.position)
+            }
+
             const groundY = 0.14
             if (apple.position.y <= groundY) {
                 apple.position.y = groundY
@@ -1078,6 +1236,9 @@ export default class AnimalCrossingScene extends BaseScene {
                     apple.userData.falling = false
                     apple.userData.picked = true
                     apple.visible = false
+                    if (apple.userData.hitSphere) {
+                        apple.userData.hitSphere.visible = false
+                    }
                     this.fallingApples.splice(i, 1)
                     this.appleCount++
                     this.updateCollectHUD()
@@ -1093,6 +1254,15 @@ export default class AnimalCrossingScene extends BaseScene {
             apple.scale.setScalar(Math.min(1, apple.scale.x + delta * 1.2))
             if (apple.scale.x >= 1) {
                 this.growingApples.splice(i, 1)
+            }
+        }
+
+        // Regrowing flowers
+        for (let i = this.growingFlowers.length - 1; i >= 0; i--) {
+            const flower = this.growingFlowers[i]
+            flower.scale.setScalar(Math.min(1, flower.scale.x + delta * 1.5))
+            if (flower.scale.x >= 1) {
+                this.growingFlowers.splice(i, 1)
             }
         }
 

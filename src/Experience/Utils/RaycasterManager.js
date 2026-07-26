@@ -39,6 +39,7 @@ export default class RaycasterManager {
             event.target.closest('.scene-selector') ||
             event.target.closest('.top-toolbar') ||
             event.target.closest('.curator-btn') ||
+            event.target.closest('.ac-guide') ||
             (this.camera && this.camera.presentationMode && this.camera.presentationMode.active)) {
             return
         }
@@ -48,65 +49,79 @@ export default class RaycasterManager {
 
         this.raycaster.setFromCamera(this.mouse, this.camera.instance)
 
-        let intersectionFound = false
+        // Collect hits from all interactive object groups, then pick the
+        // NEAREST one — priority-by-type used to let a far flower block a
+        // close pond click ("can't fish / can't pick apples").
+        const candidates = []
 
-        // Check for painting intersections first
         if (this.experience.world && this.experience.world.paintings) {
-            const intersects = this.raycaster.intersectObjects(this.experience.world.paintings.paintingMeshes, true)
+            const hits = this.raycaster.intersectObjects(this.experience.world.paintings.paintingMeshes, true)
+            hits.forEach(h => candidates.push({ kind: 'painting', hit: h }))
+        }
 
-            if (intersects.length > 0) {
-                const paintingMesh = intersects[0].object
+        if (this.experience.world && this.experience.world.easel) {
+            const easelClickables = this.experience.world.easel.getClickableObjects()
+            const hits = this.raycaster.intersectObjects(easelClickables, true)
+            hits.forEach(h => candidates.push({ kind: 'easel', hit: h }))
+        }
+
+        const scene = this.experience.world?.sceneManager?.getCurrentScene()
+
+        if (scene && scene.appleHitSpheres && scene.appleHitSpheres.length > 0) {
+            const available = scene.appleHitSpheres.filter(s => {
+                const fruit = s.userData.appleRef
+                return s.visible && fruit && fruit.visible && !fruit.userData.picked && !fruit.userData.falling
+            })
+            const hits = this.raycaster.intersectObjects(available, false)
+            hits.forEach(h => candidates.push({ kind: 'apple', hit: h }))
+        }
+
+        if (scene && scene.flowerHitSpheres && scene.flowerHitSpheres.length > 0) {
+            const available = scene.flowerHitSpheres.filter(s => {
+                const flower = s.userData.flowerRef
+                return flower && flower.visible && !flower.userData.picked
+            })
+            const hits = this.raycaster.intersectObjects(available, false)
+            hits.forEach(h => candidates.push({ kind: 'flower', hit: h }))
+        }
+
+        if (scene && scene.pondWater) {
+            const hits = this.raycaster.intersectObject(scene.pondWater, false)
+            hits.forEach(h => candidates.push({ kind: 'pond', hit: h }))
+        }
+
+        if (candidates.length === 0) return
+
+        candidates.sort((a, b) => a.hit.distance - b.hit.distance)
+        const nearest = candidates[0]
+
+        switch (nearest.kind) {
+            case 'painting': {
+                const paintingMesh = nearest.hit.object
                 const painting = paintingMesh.userData.painting
-
                 if (painting && this.camera) {
                     this.camera.enterPresentationMode(paintingMesh, painting)
-                    intersectionFound = true
                 }
+                break
             }
-        }
-
-        // Check for easel intersections if no painting was clicked
-        if (!intersectionFound && this.experience.world && this.experience.world.easel) {
-            const easelClickables = this.experience.world.easel.getClickableObjects()
-            const easelIntersects = this.raycaster.intersectObjects(easelClickables, true)
-
-            if (easelIntersects.length > 0) {
-                const clickedObject = easelIntersects[0].object
-
-                // Dispatch custom event for easel click
+            case 'easel': {
                 document.dispatchEvent(new CustomEvent('easel-clicked', {
                     detail: {
-                        object: clickedObject,
-                        intersection: easelIntersects[0]
+                        object: nearest.hit.object,
+                        intersection: nearest.hit
                     }
                 }))
-
-                intersectionFound = true
+                break
             }
-        }
-
-        // Scene gameplay interactions (Animal Crossing: apples & fishing)
-        if (!intersectionFound) {
-            const scene = this.experience.world?.sceneManager?.getCurrentScene()
-
-            if (scene && scene.apples && scene.apples.length > 0) {
-                const availableApples = scene.apples.filter(a => a.visible && !a.userData.picked && !a.userData.falling)
-                const appleHits = this.raycaster.intersectObjects(availableApples, false)
-
-                if (appleHits.length > 0) {
-                    scene.pickApple(appleHits[0].object)
-                    intersectionFound = true
-                }
-            }
-
-            if (!intersectionFound && scene && scene.pondWater) {
-                const pondHits = this.raycaster.intersectObject(scene.pondWater, false)
-
-                if (pondHits.length > 0) {
-                    scene.onPondClick(pondHits[0].point)
-                    intersectionFound = true
-                }
-            }
+            case 'apple':
+                scene.pickApple(nearest.hit.object.userData.appleRef)
+                break
+            case 'flower':
+                scene.pickFlower(nearest.hit.object.userData.flowerRef)
+                break
+            case 'pond':
+                scene.onPondClick(nearest.hit.point)
+                break
         }
     }
 
