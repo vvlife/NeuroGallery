@@ -1191,3 +1191,21 @@ html {
 .crosshair.active .crosshair-dot {
     background: rgba(120, 230, 140, 1);
 }
+
+/* Exhibition stamp HUD — sits below the AC collect HUD / top-left */
+.exhibit-hud {
+    top: 76px;
+    background: rgba(30, 34, 54, 0.88);
+    color: #e8e6ff;
+}
+
+@media (max-width: 768px) {
+    .exhibit-hud {
+        top: 66px;
+    }
+}
+
+.scene-score {
+    border-left: 1px solid rgba(255, 255, 255, 0.25);
+    padding-left: 14px;
+}

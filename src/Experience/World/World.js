@@ -31,6 +31,88 @@ export default class World {
         this.sceneManager.on('sceneChanged', () => {
             this.attachPaintingsToScene()
         })
+
+        // Exhibition progress: view-stamp collection across all scenes
+        this.viewedPaintings = new Set()
+        this.setupExhibitHUD()
+
+        // Fun facts unlocked by scene gameplay, nudging players back to the art
+        this.paintingFacts = [
+            '🖼️ 阿波罗11号：宇航员的脚印至今留在月球上 —— 那里没有风',
+            '🖼️ 旅行者1号：金唱片里收录了中文普通话问候"太空朋友，你们好！"',
+            '🖼️ 哈勃望远镜：它拍的第一张照片是糊的，主镜磨错了 2 微米',
+            '🖼️ 国际空间站：宇航员每天能看到 16 次日出',
+            '🖼️ 先驱者10号：铝板上刻的是 14 颗脉冲星组成的"宇宙地图"',
+            '🖼️ 韦伯望远镜：主镜在太空展开的误差不到一根头发丝'
+        ]
+        this.unlockedFactIndexes = new Set()
+    }
+
+    setupExhibitHUD() {
+        const hud = document.getElementById('exhibitHud')
+        if (hud) hud.classList.add('visible')
+        this.updateExhibitHUD()
+    }
+
+    updateExhibitHUD() {
+        const el = document.getElementById('exhibitCount')
+        if (el) el.textContent = `${this.viewedPaintings.size}/6`
+    }
+
+    trackPaintingView(id) {
+        if (!id || this.viewedPaintings.has(id)) return
+        this.viewedPaintings.add(id)
+        this.updateExhibitHUD()
+
+        if (this.viewedPaintings.size >= 6) {
+            this.celebrateCompletion()
+        }
+    }
+
+    // Scene gameplay calls this to unlock a fun fact about the artworks —
+    // the reward loops players back to the exhibition itself.
+    unlockPaintingFact() {
+        const remaining = this.paintingFacts
+            .map((_, i) => i)
+            .filter(i => !this.unlockedFactIndexes.has(i))
+        if (remaining.length === 0) return null
+
+        const idx = remaining[Math.floor(Math.random() * remaining.length)]
+        this.unlockedFactIndexes.add(idx)
+        return this.paintingFacts[idx]
+    }
+
+    celebrateCompletion() {
+        const toast = document.createElement('div')
+        toast.style.cssText = `
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 1300; padding: 28px 44px; border-radius: 24px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff; font-size: 22px; font-weight: 600; text-align: center;
+            box-shadow: 0 20px 60px rgba(102, 126, 234, 0.5);
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            animation: exhibitCelebrate 4s ease forwards;
+            pointer-events: none; white-space: nowrap;
+        `
+        toast.innerHTML = '🎉 恭喜！你打卡了全部 6 幅展品！<br><span style="font-size:14px;opacity:0.85">真正的观展大师</span>'
+        document.body.appendChild(toast)
+
+        if (!document.getElementById('exhibit-celebrate-style')) {
+            const style = document.createElement('style')
+            style.id = 'exhibit-celebrate-style'
+            style.textContent = `
+                @keyframes exhibitCelebrate {
+                    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+                    12% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+                    20% { transform: translate(-50%, -50%) scale(1); }
+                    80% { opacity: 1; }
+                    100% { opacity: 0; transform: translate(-50%, -60%) scale(1); }
+                }
+            `
+            document.head.appendChild(style)
+        }
+
+        setTimeout(() => toast.remove(), 4200)
     }
 
     waitForPaintings() {

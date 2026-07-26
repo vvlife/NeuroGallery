@@ -8,6 +8,14 @@ export default class SpaceScene extends BaseScene {
         this.planets = []
         this.asteroids = []
         this.paintingPods = []
+
+        // Gameplay
+        this.stardustOrbs = []
+        this.stardustHitSpheres = []
+        this.asteroidHitSpheres = []
+        this.shatteringAsteroids = []
+        this.stardust = 0
+        this._factThreshold = 100
     }
 
     setup() {
@@ -19,6 +27,8 @@ export default class SpaceScene extends BaseScene {
         this.setAsteroids()
         this.setPaintingPods()
         this.setZeroGravityDust()
+        this.setStardustOrbs()
+        this.setupSceneScore('✨')
     }
 
     setLighting() {
@@ -220,9 +230,142 @@ export default class SpaceScene extends BaseScene {
             asteroid.userData.orbitRadius = radius
             asteroid.castShadow = true
 
+            // A few asteroids drift through the playable zone and can be
+            // shattered with a click
+            if (i < 8) {
+                asteroid.userData.orbitRadius = 6 + Math.random() * 5
+                asteroid.userData.shatterable = true
+                asteroid.userData.shattered = false
+
+                const hitSphere = new THREE.Mesh(
+                    new THREE.SphereGeometry(1.2, 6, 6),
+                    new THREE.MeshBasicMaterial({ visible: false })
+                )
+                hitSphere.userData.clickable = true
+                hitSphere.userData.type = 'asteroid'
+                hitSphere.userData.asteroidRef = asteroid
+                asteroid.add(hitSphere)
+                this.asteroidHitSpheres.push(hitSphere)
+            }
+
             this.add(asteroid)
             this.asteroids.push(asteroid)
         }
+    }
+
+    // ── Stardust orbs: collectible motes floating in the play zone ────
+    setStardustOrbs() {
+        const orbMaterial = new THREE.MeshStandardMaterial({
+            color: '#aee8ff',
+            emissive: '#66ccff',
+            emissiveIntensity: 0.9,
+            roughness: 0.2,
+            transparent: true,
+            opacity: 0.95
+        })
+
+        for (let i = 0; i < 18; i++) {
+            const orb = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), orbMaterial)
+
+            const angle = Math.random() * Math.PI * 2
+            const radius = 3 + Math.random() * 8
+            orb.position.set(
+                Math.cos(angle) * radius,
+                0.8 + Math.random() * 2.4,
+                Math.sin(angle) * radius
+            )
+            orb.userData.baseY = orb.position.y
+            orb.userData.wobble = Math.random() * Math.PI * 2
+            orb.userData.clickable = true
+            orb.userData.type = 'stardust'
+
+            const hitSphere = new THREE.Mesh(
+                new THREE.SphereGeometry(0.6, 6, 6),
+                new THREE.MeshBasicMaterial({ visible: false })
+            )
+            hitSphere.userData.clickable = true
+            hitSphere.userData.type = 'stardust'
+            hitSphere.userData.orbRef = orb
+            orb.add(hitSphere)
+            this.stardustHitSpheres.push(hitSphere)
+
+            this.add(orb)
+            this.stardustOrbs.push(orb)
+        }
+    }
+
+    setupSceneScore(icon) {
+        const item = document.getElementById('sceneScoreItem')
+        const iconEl = document.getElementById('sceneScoreIcon')
+        if (item && iconEl) {
+            iconEl.textContent = icon
+            item.style.display = ''
+        }
+        this.updateSceneScore()
+    }
+
+    updateSceneScore() {
+        const el = document.getElementById('sceneScoreCount')
+        if (el) el.textContent = this.stardust
+    }
+
+    addStardust(amount) {
+        this.stardust += amount
+        this.updateSceneScore()
+
+        // Every threshold crossed unlocks a fun fact about the artworks,
+        // looping the player back to the exhibition
+        if (this.stardust >= this._factThreshold) {
+            this._factThreshold += 100
+            const fact = this.experience.world?.unlockPaintingFact?.()
+            if (fact) {
+                this.showSceneToast(`✨ 星尘共鸣！${fact}`)
+                return
+            }
+        }
+        this.showSceneToast(`✨ +${amount} 星尘`)
+    }
+
+    showSceneToast(text) {
+        const el = document.getElementById('gameplayToast')
+        if (!el) return
+        el.textContent = text
+        el.classList.add('visible')
+        clearTimeout(this._toastTimer)
+        this._toastTimer = setTimeout(() => el.classList.remove('visible'), 3000)
+    }
+
+    collectStardust(orb) {
+        if (!orb || !orb.visible) return
+        orb.visible = false
+        this.addStardust(10)
+
+        setTimeout(() => {
+            orb.visible = true
+        }, 15000)
+    }
+
+    shatterAsteroid(asteroid) {
+        if (!asteroid || asteroid.userData.shattered || !asteroid.userData.shatterable) return
+        asteroid.userData.shattered = true
+        this.shatteringAsteroids.push(asteroid)
+        this.addStardust(25)
+        this.showSceneToast('💥 击碎了陨石！+25 星尘')
+
+        setTimeout(() => {
+            asteroid.userData.shattered = false
+            asteroid.visible = true
+            asteroid.scale.setScalar(1)
+        }, 20000)
+    }
+
+    destroy() {
+        const item = document.getElementById('sceneScoreItem')
+        if (item) item.style.display = 'none'
+        const toast = document.getElementById('gameplayToast')
+        if (toast) toast.classList.remove('visible')
+        clearTimeout(this._toastTimer)
+        super.destroy()
     }
 
     setPaintingPods() {
@@ -336,12 +479,14 @@ export default class SpaceScene extends BaseScene {
 
     update() {
         const delta = this.time.delta / 1000
+        const now = this.time.elapsed
 
         this.planets.forEach((planet, i) => {
             planet.rotation.y += delta * (0.1 + i * 0.05)
         })
 
         this.asteroids.forEach((asteroid) => {
+            if (asteroid.userData.shattered) return
             asteroid.userData.orbitAngle += delta * asteroid.userData.orbitSpeed
             asteroid.position.x = Math.cos(asteroid.userData.orbitAngle) * asteroid.userData.orbitRadius
             asteroid.position.z = Math.sin(asteroid.userData.orbitAngle) * asteroid.userData.orbitRadius
@@ -349,6 +494,23 @@ export default class SpaceScene extends BaseScene {
             asteroid.rotation.x += delta * asteroid.userData.rotationSpeed.x
             asteroid.rotation.y += delta * asteroid.userData.rotationSpeed.y
             asteroid.rotation.z += delta * asteroid.userData.rotationSpeed.z
+        })
+
+        // Shattering asteroids shrink away
+        for (let i = this.shatteringAsteroids.length - 1; i >= 0; i--) {
+            const asteroid = this.shatteringAsteroids[i]
+            asteroid.scale.multiplyScalar(1 - delta * 6)
+            if (asteroid.scale.x < 0.02) {
+                asteroid.visible = false
+                this.shatteringAsteroids.splice(i, 1)
+            }
+        }
+
+        // Stardust orbs bob gently
+        this.stardustOrbs.forEach((orb) => {
+            if (!orb.visible) return
+            orb.userData.wobble += delta * 2
+            orb.position.y = orb.userData.baseY + Math.sin(orb.userData.wobble) * 0.25
         })
 
         this.paintingPods.forEach((pod, i) => {

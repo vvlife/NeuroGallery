@@ -9,6 +9,12 @@ export default class CyberpunkScene extends BaseScene {
         this.paintingBoards = []
         this.rain = null
         this.rainVelocities = null
+
+        // Gameplay
+        this.dataShards = []
+        this.shardHitSpheres = []
+        this.shardCount = 0
+        this._factThreshold = 5
     }
 
     setup() {
@@ -18,6 +24,8 @@ export default class CyberpunkScene extends BaseScene {
         this.setNeonSigns()
         this.setPaintingBoards()
         this.setRain()
+        this.setDataShards()
+        this.setupSceneScore('💾')
     }
 
     setLighting() {
@@ -268,6 +276,106 @@ export default class CyberpunkScene extends BaseScene {
         this.add(this.rain)
     }
 
+    // ── Data shards: glowing fragments drifting between the towers ───
+    setDataShards() {
+        const shardColors = ['#00ffff', '#ff00ff', '#00ff9d']
+
+        for (let i = 0; i < 15; i++) {
+            const color = shardColors[i % shardColors.length]
+            const shard = new THREE.Mesh(
+                new THREE.OctahedronGeometry(0.16, 0),
+                new THREE.MeshStandardMaterial({
+                    color,
+                    emissive: color,
+                    emissiveIntensity: 1.1,
+                    roughness: 0.2
+                })
+            )
+
+            const angle = Math.random() * Math.PI * 2
+            const radius = 3 + Math.random() * 8
+            shard.position.set(
+                Math.cos(angle) * radius,
+                0.8 + Math.random() * 2.6,
+                Math.sin(angle) * radius
+            )
+            shard.userData.baseY = shard.position.y
+            shard.userData.wobble = Math.random() * Math.PI * 2
+            shard.userData.spin = 0.5 + Math.random()
+            shard.userData.clickable = true
+            shard.userData.type = 'dataShard'
+
+            const hitSphere = new THREE.Mesh(
+                new THREE.SphereGeometry(0.6, 6, 6),
+                new THREE.MeshBasicMaterial({ visible: false })
+            )
+            hitSphere.userData.clickable = true
+            hitSphere.userData.type = 'dataShard'
+            hitSphere.userData.shardRef = shard
+            shard.add(hitSphere)
+            this.shardHitSpheres.push(hitSphere)
+
+            this.add(shard)
+            this.dataShards.push(shard)
+        }
+    }
+
+    setupSceneScore(icon) {
+        const item = document.getElementById('sceneScoreItem')
+        const iconEl = document.getElementById('sceneScoreIcon')
+        if (item && iconEl) {
+            iconEl.textContent = icon
+            item.style.display = ''
+        }
+        this.updateSceneScore()
+    }
+
+    updateSceneScore() {
+        const el = document.getElementById('sceneScoreCount')
+        if (el) el.textContent = this.shardCount
+    }
+
+    collectShard(shard) {
+        if (!shard || !shard.visible) return
+        shard.visible = false
+        this.shardCount++
+        this.updateSceneScore()
+
+        // Every 5 shards decrypt a fun fact about the artworks — the
+        // reward loops the player back to the exhibition
+        if (this.shardCount >= this._factThreshold) {
+            this._factThreshold += 5
+            const fact = this.experience.world?.unlockPaintingFact?.()
+            if (fact) {
+                this.showSceneToast(`💾 数据解密成功！${fact}`)
+                return
+            }
+        }
+        this.showSceneToast(`💾 +1 数据碎片 (${this.shardCount})`)
+
+        setTimeout(() => {
+            shard.visible = true
+        }, 18000)
+    }
+
+    showSceneToast(text) {
+        const el = document.getElementById('gameplayToast')
+        if (!el) return
+        el.textContent = text
+        el.classList.add('visible')
+        clearTimeout(this._toastTimer)
+        this._toastTimer = setTimeout(() => el.classList.remove('visible'), 3000)
+    }
+
+    destroy() {
+        const item = document.getElementById('sceneScoreItem')
+        if (item) item.style.display = 'none'
+        const toast = document.getElementById('gameplayToast')
+        if (toast) toast.classList.remove('visible')
+        clearTimeout(this._toastTimer)
+        super.destroy()
+    }
+
     update() {
         const delta = this.time.delta / 1000
 
@@ -288,6 +396,15 @@ export default class CyberpunkScene extends BaseScene {
         this.neonSigns.forEach((sign, i) => {
             const flicker = Math.sin(this.time.elapsed * 0.01 + i * 2) > -0.9 ? 1 : 0.3
             sign.material.emissiveIntensity = 1.2 * flicker
+        })
+
+        // Data shards float and spin
+        this.dataShards.forEach((shard) => {
+            if (!shard.visible) return
+            shard.userData.wobble += delta * 2
+            shard.position.y = shard.userData.baseY + Math.sin(shard.userData.wobble) * 0.3
+            shard.rotation.y += delta * shard.userData.spin
+            shard.rotation.x += delta * shard.userData.spin * 0.6
         })
     }
 }

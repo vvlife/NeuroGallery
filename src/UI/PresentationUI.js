@@ -139,6 +139,11 @@ export default class PresentationUI {
                 e.preventDefault()
                 window.open(this._repoUrl, '_blank', 'noopener,noreferrer')
             }
+
+            // ESC closes the card (otherwise it keeps swallowing clicks)
+            if (this._repoUrl && e.key === 'Escape') {
+                this._dismissCurrent()
+            }
         })
 
         // Instructions
@@ -201,6 +206,11 @@ export default class PresentationUI {
     }
 
     show(paintingData) {
+        // Track exhibition progress (view-stamp collection across scenes)
+        if (window.experience?.world?.trackPaintingView && paintingData?.id) {
+            window.experience.world.trackPaintingView(paintingData.id)
+        }
+
         // Update content
         this.title.textContent = paintingData.title || 'Untitled Artwork'
         this.aiModel.textContent = `Created with ${paintingData.aiModel || 'AI Generator'}`

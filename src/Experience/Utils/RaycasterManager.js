@@ -126,6 +126,15 @@ export default class RaycasterManager {
             case 'villager':
                 scene?.talkToVillager(nearest.hit.object.userData.villagerRef)
                 break
+            case 'stardust':
+                scene?.collectStardust(nearest.hit.object.userData.orbRef)
+                break
+            case 'asteroid':
+                scene?.shatterAsteroid(nearest.hit.object.userData.asteroidRef)
+                break
+            case 'dataShard':
+                scene?.collectShard(nearest.hit.object.userData.shardRef)
+                break
         }
     }
 
@@ -206,6 +215,33 @@ export default class RaycasterManager {
         if (scene && scene.villagerHitSpheres && scene.villagerHitSpheres.length > 0) {
             const hits = this.raycaster.intersectObjects(scene.villagerHitSpheres, false)
             hits.forEach(h => candidates.push({ kind: 'villager', hit: h }))
+        }
+
+        if (scene && scene.stardustHitSpheres && scene.stardustHitSpheres.length > 0) {
+            const available = scene.stardustHitSpheres.filter(s => {
+                const orb = s.userData.orbRef
+                return orb && orb.visible
+            })
+            const hits = this.raycaster.intersectObjects(available, false)
+            hits.forEach(h => candidates.push({ kind: 'stardust', hit: h }))
+        }
+
+        if (scene && scene.asteroidHitSpheres && scene.asteroidHitSpheres.length > 0) {
+            const available = scene.asteroidHitSpheres.filter(s => {
+                const a = s.userData.asteroidRef
+                return a && a.visible && !a.userData.shattered
+            })
+            const hits = this.raycaster.intersectObjects(available, false)
+            hits.forEach(h => candidates.push({ kind: 'asteroid', hit: h }))
+        }
+
+        if (scene && scene.shardHitSpheres && scene.shardHitSpheres.length > 0) {
+            const available = scene.shardHitSpheres.filter(s => {
+                const shard = s.userData.shardRef
+                return shard && shard.visible
+            })
+            const hits = this.raycaster.intersectObjects(available, false)
+            hits.forEach(h => candidates.push({ kind: 'dataShard', hit: h }))
         }
 
         return candidates
