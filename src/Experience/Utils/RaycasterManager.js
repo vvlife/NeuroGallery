@@ -84,6 +84,30 @@ export default class RaycasterManager {
                 intersectionFound = true
             }
         }
+
+        // Scene gameplay interactions (Animal Crossing: apples & fishing)
+        if (!intersectionFound) {
+            const scene = this.experience.world?.sceneManager?.getCurrentScene()
+
+            if (scene && scene.apples && scene.apples.length > 0) {
+                const availableApples = scene.apples.filter(a => a.visible && !a.userData.picked && !a.userData.falling)
+                const appleHits = this.raycaster.intersectObjects(availableApples, false)
+
+                if (appleHits.length > 0) {
+                    scene.pickApple(appleHits[0].object)
+                    intersectionFound = true
+                }
+            }
+
+            if (!intersectionFound && scene && scene.pondWater) {
+                const pondHits = this.raycaster.intersectObject(scene.pondWater, false)
+
+                if (pondHits.length > 0) {
+                    scene.onPondClick(pondHits[0].point)
+                    intersectionFound = true
+                }
+            }
+        }
     }
 
     update() {

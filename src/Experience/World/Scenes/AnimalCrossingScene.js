@@ -21,6 +21,18 @@ export default class AnimalCrossingScene extends BaseScene {
         this.villagers = []
         this.balloons = []
         this.fountainDrops = null
+
+        // Gameplay state
+        this.apples = []
+        this.fallingApples = []
+        this.growingApples = []
+        this.appleCount = 0
+        this.fishCount = 0
+        this.pondWater = null
+        this.fishingState = 'idle' // idle | waiting | biting
+        this.fishingBobber = null
+        this.caughtFishSprite = null
+        this._fishingTimeout = null
     }
 
     setup() {
@@ -37,6 +49,7 @@ export default class AnimalCrossingScene extends BaseScene {
         this.setClouds()
         this.setBalloons()
         this.setVillagers()      // animal NPCs wandering the plaza
+        this.setupGameplay()     // apple picking + fishing
     }
 
     // Some forks may not need the fence; keep it as its own step so the
@@ -447,7 +460,7 @@ export default class AnimalCrossingScene extends BaseScene {
                 tree.add(leaf)
             })
 
-            // Fruit dots on the canopy
+            // Fruit dots on the canopy (clickable for picking)
             const fruitColor = fruitColors[fruitIdx]
             for (let i = 0; i < 5; i++) {
                 const fruit = new THREE.Mesh(
@@ -460,7 +473,12 @@ export default class AnimalCrossingScene extends BaseScene {
                     2.7 + Math.sin(i * 2.3) * 0.5,
                     Math.sin(angle) * 1.1
                 )
+                fruit.userData.clickable = true
+                fruit.userData.type = 'apple'
+                fruit.userData.homePosition = fruit.position.clone()
+                fruit.userData.parentTree = tree
                 tree.add(fruit)
+                this.apples.push(fruit)
             }
 
             tree.position.set(x, 0, z)
@@ -564,7 +582,10 @@ export default class AnimalCrossingScene extends BaseScene {
         )
         water.rotation.x = -Math.PI * 0.5
         water.position.y = 0.02
+        water.userData.clickable = true
+        water.userData.type = 'pond'
         pondGroup.add(water)
+        this.pondWater = water
 
         // Sandy rim
         const rim = new THREE.Mesh(
@@ -805,6 +826,142 @@ export default class AnimalCrossingScene extends BaseScene {
         return villager
     }
 
+    // ── Gameplay: apple picking & fishing ─────────────────────────────
+    setupGameplay() {
+        // Show the collect HUD while this scene is active
+        const hud = document.getElementById('collectHud')
+        if (hud) hud.classList.add('visible')
+        this.updateCollectHUD()
+    }
+
+    updateCollectHUD() {
+        const appleEl = document.getElementById('appleCount')
+        const fishEl = document.getElementById('fishCount')
+        if (appleEl) appleEl.textContent = this.appleCount
+        if (fishEl) fishEl.textContent = this.fishCount
+    }
+
+    showGameplayToast(text) {
+        const el = document.getElementById('gameplayToast')
+        if (!el) return
+        el.textContent = text
+        el.classList.add('visible')
+        clearTimeout(this._toastTimer)
+        this._toastTimer = setTimeout(() => el.classList.remove('visible'), 2500)
+    }
+
+    pickApple(apple) {
+        if (!apple || apple.userData.picked || apple.userData.falling) return
+        apple.userData.falling = true
+        apple.userData.fallVelocity = 0
+        apple.userData.bounces = 0
+        this.fallingApples.push(apple)
+    }
+
+    onPondClick(point) {
+        if (this.fishingState === 'idle') {
+            this.startFishing(point)
+        } else if (this.fishingState === 'biting') {
+            this.reelIn()
+        }
+        // While waiting, clicking does nothing — patience, like real fishing
+    }
+
+    startFishing(point) {
+        this.fishingState = 'waiting'
+
+        // Bobber at the clicked spot
+        if (!this.fishingBobber) {
+            this.fishingBobber = new THREE.Mesh(
+                new THREE.SphereGeometry(0.12, 10, 10),
+                new THREE.MeshStandardMaterial({ color: '#ff4d4d', roughness: 0.4 })
+            )
+            this.add(this.fishingBobber)
+        }
+        this.fishingBobber.visible = true
+        this.fishingBobber.position.set(point.x, 0.12, point.z)
+
+        this.showGameplayToast('🎣 等待鱼儿上钩…')
+
+        this._fishingTimeout = setTimeout(() => {
+            if (this.fishingState !== 'waiting') return
+            this.fishingState = 'biting'
+            this.showGameplayToast('❗ 有鱼咬钩了！快点击水面收杆！')
+
+            // Fish escapes if you are too slow
+            this._fishingTimeout = setTimeout(() => {
+                if (this.fishingState === 'biting') {
+                    this.fishingState = 'idle'
+                    if (this.fishingBobber) this.fishingBobber.visible = false
+                    this.showGameplayToast('💨 鱼跑掉了…再试一次')
+                }
+            }, 3000)
+        }, 2000 + Math.random() * 3000)
+    }
+
+    reelIn() {
+        clearTimeout(this._fishingTimeout)
+        this.fishingState = 'idle'
+        if (this.fishingBobber) this.fishingBobber.visible = false
+
+        // Random catch — mostly fish, sometimes junk, like AC
+        const roll = Math.random()
+        let emoji, name
+        if (roll < 0.55) { emoji = '🐟'; name = '鲈鱼' }
+        else if (roll < 0.8) { emoji = '🐠'; name = '热带鱼' }
+        else if (roll < 0.95) { emoji = '🐡'; name = '河豚' }
+        else { emoji = '👢'; name = '旧靴子' }
+
+        this.fishCount++
+        this.updateCollectHUD()
+        this.showGameplayToast(`${emoji} 钓到了一条${name}！`)
+        this.showCaughtFish(emoji)
+    }
+
+    showCaughtFish(emoji) {
+        // Draw the emoji onto a canvas and float it as a sprite
+        const canvas = document.createElement('canvas')
+        canvas.width = 128
+        canvas.height = 128
+        const ctx = canvas.getContext('2d')
+        ctx.font = '96px serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(emoji, 64, 72)
+
+        const texture = new THREE.CanvasTexture(canvas)
+        const material = new THREE.SpriteMaterial({ map: texture, transparent: true })
+        const sprite = new THREE.Sprite(material)
+        sprite.scale.set(1.2, 1.2, 1)
+
+        const pondPos = new THREE.Vector3(-17, 0, -6)
+        sprite.position.set(pondPos.x, 1.2, pondPos.z)
+        sprite.userData.bornAt = this.time.elapsed
+        this.add(sprite)
+        this.caughtFishSprite = sprite
+    }
+
+    respawnApple(apple) {
+        // A new fruit grows back on the same tree after a while
+        setTimeout(() => {
+            apple.userData.picked = false
+            apple.position.copy(apple.userData.homePosition)
+            apple.scale.setScalar(0.01)
+            apple.visible = true
+            this.growingApples.push(apple)
+        }, 8000 + Math.random() * 7000)
+    }
+
+    destroy() {
+        const hud = document.getElementById('collectHud')
+        if (hud) hud.classList.remove('visible')
+        const toast = document.getElementById('gameplayToast')
+        if (toast) toast.classList.remove('visible')
+        clearTimeout(this._fishingTimeout)
+        clearTimeout(this._toastTimer)
+        super.destroy()
+    }
+
     // ── Per-frame animation ───────────────────────────────────────────
     update() {
         const delta = this.time.delta / 1000
@@ -903,5 +1060,61 @@ export default class AnimalCrossingScene extends BaseScene {
                 feet[1].position.z = 0.05 - Math.sin(walk.hopPhase) * 0.14
             }
         })
+
+        // Falling apples: gravity, two bounces, then collected
+        for (let i = this.fallingApples.length - 1; i >= 0; i--) {
+            const apple = this.fallingApples[i]
+            apple.userData.fallVelocity -= 9.8 * delta
+            apple.position.y += apple.userData.fallVelocity * delta
+
+            const groundY = 0.14
+            if (apple.position.y <= groundY) {
+                apple.position.y = groundY
+                if (apple.userData.bounces < 2) {
+                    apple.userData.fallVelocity = -apple.userData.fallVelocity * 0.35
+                    apple.userData.bounces++
+                } else {
+                    // Collected!
+                    apple.userData.falling = false
+                    apple.userData.picked = true
+                    apple.visible = false
+                    this.fallingApples.splice(i, 1)
+                    this.appleCount++
+                    this.updateCollectHUD()
+                    this.showGameplayToast(`🍎 摘到一个水果！(${this.appleCount})`)
+                    this.respawnApple(apple)
+                }
+            }
+        }
+
+        // Regrowing apples: scale back in over a second
+        for (let i = this.growingApples.length - 1; i >= 0; i--) {
+            const apple = this.growingApples[i]
+            apple.scale.setScalar(Math.min(1, apple.scale.x + delta * 1.2))
+            if (apple.scale.x >= 1) {
+                this.growingApples.splice(i, 1)
+            }
+        }
+
+        // Fishing bobber: gentle bob; ducks under while biting
+        if (this.fishingBobber && this.fishingBobber.visible) {
+            if (this.fishingState === 'biting') {
+                this.fishingBobber.position.y = 0.02 + Math.sin(now * 0.02) * 0.03
+            } else {
+                this.fishingBobber.position.y = 0.12 + Math.sin(now * 0.003) * 0.04
+            }
+        }
+
+        // Caught-fish sprite: floats up, then disappears
+        if (this.caughtFishSprite) {
+            const age = now - this.caughtFishSprite.userData.bornAt
+            this.caughtFishSprite.position.y = 1.2 + age * 0.004
+            if (age > 2000) {
+                this.group.remove(this.caughtFishSprite)
+                this.caughtFishSprite.material.map.dispose()
+                this.caughtFishSprite.material.dispose()
+                this.caughtFishSprite = null
+            }
+        }
     }
 }

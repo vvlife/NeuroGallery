@@ -62,7 +62,7 @@ export default class Easel {
     }
 
     createCanvas() {
-        const canvasGeometry = new THREE.PlaneGeometry(1.2, 1.2)
+        const canvasGeometry = new THREE.PlaneGeometry(1.4, 1.4)
         const canvasMaterial = new THREE.MeshStandardMaterial({
             color: 0xffffff,
             roughness: 0.8,
@@ -79,13 +79,13 @@ export default class Easel {
                 canvasMaterial.map = tex
                 canvasMaterial.emissiveMap = tex
                 canvasMaterial.emissive = new THREE.Color(0xffffff)
-                canvasMaterial.emissiveIntensity = 0.35
+                canvasMaterial.emissiveIntensity = 0.55
                 canvasMaterial.needsUpdate = true
             }
         )
 
         this.canvas = new THREE.Mesh(canvasGeometry, canvasMaterial)
-        this.canvas.position.set(0, 2.3, -1.22)
+        this.canvas.position.set(0, 2.3, -1.18)
         this.canvas.rotation.x = -0.28
         this.canvas.userData.clickable = true
         this.canvas.userData.type = 'easel-canvas'
@@ -93,10 +93,10 @@ export default class Easel {
 
         this.easelGroup.add(this.canvas)
 
-        // Back panel sharing the same material, so the artwork (and any
-        // generated image) is visible from behind the easel as well
+        // Back panel sharing the same material — pushed slightly past the
+        // easel model's own back board so the artwork reads from behind too
         this.backCanvas = new THREE.Mesh(canvasGeometry, canvasMaterial)
-        this.backCanvas.position.set(0, 2.3, -1.26)
+        this.backCanvas.position.set(0, 2.3, -1.42)
         this.backCanvas.rotation.set(-0.28, Math.PI, 0)
         this.backCanvas.name = 'easel-canvas-back'
 
