@@ -27,6 +27,44 @@ export default class Easel {
         this.createGalleryEasel()
     }
 
+    // Shared canvas material: double-sided with the default artwork, so
+    // every scene's easel reads from any direction.
+    createCanvasMaterial() {
+        const canvasMaterial = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            roughness: 0.8,
+            metalness: 0.0,
+            side: THREE.DoubleSide
+        })
+
+        new THREE.TextureLoader().load(
+            '/textures/animalcrossing/easel-default.png',
+            (tex) => {
+                tex.colorSpace = THREE.SRGBColorSpace
+                canvasMaterial.map = tex
+                canvasMaterial.emissiveMap = tex
+                canvasMaterial.emissive = new THREE.Color(0xffffff)
+                canvasMaterial.emissiveIntensity = 0.55
+                canvasMaterial.needsUpdate = true
+            }
+        )
+
+        return canvasMaterial
+    }
+
+    // Mirrored back panel behind a scene easel's canvas (shares material)
+    addBackCanvas(size, frontZ, rotX = 0) {
+        const backCanvas = new THREE.Mesh(
+            new THREE.PlaneGeometry(size, size),
+            this.canvas.material
+        )
+        backCanvas.position.set(this.canvas.position.x, this.canvas.position.y, frontZ - 0.06)
+        backCanvas.rotation.set(rotX, Math.PI, 0)
+        backCanvas.name = 'easel-canvas-back'
+        this.easelGroup.add(backCanvas)
+        this.backCanvas = backCanvas
+    }
+
     createGalleryEasel() {
         if (!this.resources.items.easel) {
             return
@@ -157,20 +195,16 @@ export default class Easel {
         crossbar.userData.type = 'easel'
         this.easelGroup.add(crossbar)
 
-        // Canvas board
+        // Canvas board (double-sided with default artwork + mirrored back)
         const boardGeometry = new THREE.PlaneGeometry(1.4, 1.4)
-        const canvasMaterial = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            roughness: 0.8,
-            metalness: 0.0
-        })
-        this.canvas = new THREE.Mesh(boardGeometry, canvasMaterial)
+        this.canvas = new THREE.Mesh(boardGeometry, this.createCanvasMaterial())
         this.canvas.position.set(0, 2.3, -0.15)
         this.canvas.rotation.x = -0.1
         this.canvas.userData.clickable = true
         this.canvas.userData.type = 'easel-canvas'
         this.canvas.name = 'easel-canvas'
         this.easelGroup.add(this.canvas)
+        this.addBackCanvas(1.4, -0.15, -0.1)
 
         this.easelGroup.position.set(0, 0, 0)
         this.scene.add(this.easelGroup)
@@ -235,21 +269,18 @@ export default class Easel {
         frame.userData.type = 'easel'
         this.easelGroup.add(frame)
 
-        // Holographic canvas
+        // Holographic canvas (double-sided with default artwork + back)
         const canvasGeometry = new THREE.PlaneGeometry(1.2, 1.2)
-        const canvasMaterial = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            roughness: 0.2,
-            metalness: 0.1,
-            emissive: '#0a2a4a',
-            emissiveIntensity: 0.3
-        })
-        this.canvas = new THREE.Mesh(canvasGeometry, canvasMaterial)
+        const holoMaterial = this.createCanvasMaterial()
+        holoMaterial.roughness = 0.2
+        holoMaterial.metalness = 0.1
+        this.canvas = new THREE.Mesh(canvasGeometry, holoMaterial)
         this.canvas.position.set(0, 2.5, 0.04)
         this.canvas.userData.clickable = true
         this.canvas.userData.type = 'easel-canvas'
         this.canvas.name = 'easel-canvas'
         this.easelGroup.add(this.canvas)
+        this.addBackCanvas(1.2, 0.04)
 
         // Floating particles around pedestal
         const particleCount = 50
@@ -377,21 +408,18 @@ export default class Easel {
         neonRight.position.set(0.82, 2.6, 0)
         this.easelGroup.add(neonRight)
 
-        // Screen / canvas
+        // Screen / canvas (double-sided with default artwork + back)
         const canvasGeometry = new THREE.PlaneGeometry(1.3, 1.3)
-        const canvasMaterial = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            roughness: 0.2,
-            metalness: 0.1,
-            emissive: '#1a0a2a',
-            emissiveIntensity: 0.2
-        })
-        this.canvas = new THREE.Mesh(canvasGeometry, canvasMaterial)
+        const screenMaterial = this.createCanvasMaterial()
+        screenMaterial.roughness = 0.2
+        screenMaterial.metalness = 0.1
+        this.canvas = new THREE.Mesh(canvasGeometry, screenMaterial)
         this.canvas.position.set(0, 2.6, 0.05)
         this.canvas.userData.clickable = true
         this.canvas.userData.type = 'easel-canvas'
         this.canvas.name = 'easel-canvas'
         this.easelGroup.add(this.canvas)
+        this.addBackCanvas(1.3, 0.05)
 
         this.easelGroup.position.set(0, 0, 0)
         this.scene.add(this.easelGroup)

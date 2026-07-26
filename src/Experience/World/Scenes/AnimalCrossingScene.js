@@ -895,7 +895,7 @@ export default class AnimalCrossingScene extends BaseScene {
                     if (this.fishingBobber) this.fishingBobber.visible = false
                     this.showGameplayToast('💨 鱼跑掉了…再试一次')
                 }
-            }, 3000)
+            }, 5000)
         }, 2000 + Math.random() * 3000)
     }
 
