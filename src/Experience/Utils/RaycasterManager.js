@@ -111,6 +111,21 @@ export default class RaycasterManager {
             case 'pond':
                 scene?.onPondClick(nearest.hit.point)
                 break
+            case 'butterfly':
+                scene?.catchButterfly(nearest.hit.object.userData.butterflyRef)
+                break
+            case 'digSpot':
+                scene?.digAtSpot(nearest.hit.object.userData.spotRef)
+                break
+            case 'tree':
+                scene?.shakeTree(nearest.hit.object.userData.treeRef)
+                break
+            case 'balloon':
+                scene?.popBalloon(nearest.hit.object.userData.balloonRef)
+                break
+            case 'villager':
+                scene?.talkToVillager(nearest.hit.object.userData.villagerRef)
+                break
         }
     }
 
@@ -154,6 +169,43 @@ export default class RaycasterManager {
         if (scene && scene.pondWater) {
             const hits = this.raycaster.intersectObject(scene.pondWater, false)
             hits.forEach(h => candidates.push({ kind: 'pond', hit: h }))
+        }
+
+        if (scene && scene.butterflyHitSpheres && scene.butterflyHitSpheres.length > 0) {
+            const available = scene.butterflyHitSpheres.filter(s => {
+                const b = s.userData.butterflyRef
+                return b && b.visible && !b.userData.caught
+            })
+            const hits = this.raycaster.intersectObjects(available, false)
+            hits.forEach(h => candidates.push({ kind: 'butterfly', hit: h }))
+        }
+
+        if (scene && scene.digHitSpheres && scene.digHitSpheres.length > 0) {
+            const available = scene.digHitSpheres.filter(s => {
+                const spot = s.userData.spotRef
+                return spot && !spot.userData.dug
+            })
+            const hits = this.raycaster.intersectObjects(available, false)
+            hits.forEach(h => candidates.push({ kind: 'digSpot', hit: h }))
+        }
+
+        if (scene && scene.treeHitCylinders && scene.treeHitCylinders.length > 0) {
+            const hits = this.raycaster.intersectObjects(scene.treeHitCylinders, false)
+            hits.forEach(h => candidates.push({ kind: 'tree', hit: h }))
+        }
+
+        if (scene && scene.balloonHitSpheres && scene.balloonHitSpheres.length > 0) {
+            const available = scene.balloonHitSpheres.filter(s => {
+                const b = s.userData.balloonRef
+                return b && b.visible && !b.userData.popped
+            })
+            const hits = this.raycaster.intersectObjects(available, false)
+            hits.forEach(h => candidates.push({ kind: 'balloon', hit: h }))
+        }
+
+        if (scene && scene.villagerHitSpheres && scene.villagerHitSpheres.length > 0) {
+            const hits = this.raycaster.intersectObjects(scene.villagerHitSpheres, false)
+            hits.forEach(h => candidates.push({ kind: 'villager', hit: h }))
         }
 
         return candidates

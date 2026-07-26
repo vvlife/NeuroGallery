@@ -33,6 +33,18 @@ export default class AnimalCrossingScene extends BaseScene {
         this.flowerCount = 0
         this.growingFlowers = []
         this.fishCount = 0
+        this.bellCount = 0          // 铃钱 — the AC currency
+        this.butterflies = []
+        this.butterflyHitSpheres = []
+        this.butterflyCount = 0
+        this.digSpots = []
+        this.digHitSpheres = []
+        this.treeHitCylinders = []
+        this.shakingTrees = []
+        this.balloonHitSpheres = []
+        this.villagerHitSpheres = []
+        this.activeBubble = null
+        this.fishCount = 0
         this.pondWater = null
         this.fishingState = 'idle' // idle | waiting | biting
         this.fishingBobber = null
@@ -54,6 +66,8 @@ export default class AnimalCrossingScene extends BaseScene {
         this.setClouds()
         this.setBalloons()
         this.setVillagers()      // animal NPCs wandering the plaza
+        this.setButterflies()    // catchable butterflies near the flowers
+        this.setDigSpots()       // glowing dig spots (fossils & bells)
         this.setupGameplay()     // apple picking + fishing
     }
 
@@ -507,8 +521,22 @@ export default class AnimalCrossingScene extends BaseScene {
             tree.position.set(x, 0, z)
             tree.rotation.y = Math.random() * Math.PI * 2
             tree.userData.swayOffset = index
+            tree.userData.shakeable = true
+            tree.userData.shakeCooldownUntil = 0
             this.add(tree)
             this.trees.push(tree)
+
+            // Invisible trunk cylinder for tree-shaking clicks
+            const trunkHit = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.8, 0.8, 3.2, 6),
+                new THREE.MeshBasicMaterial({ visible: false })
+            )
+            trunkHit.position.set(x, 1.6, z)
+            trunkHit.userData.clickable = true
+            trunkHit.userData.type = 'tree'
+            trunkHit.userData.treeRef = tree
+            this.add(trunkHit)
+            this.treeHitCylinders.push(trunkHit)
         })
     }
 
@@ -738,6 +766,20 @@ export default class AnimalCrossingScene extends BaseScene {
             balloon.userData.baseY = balloon.position.y
             balloon.userData.drift = Math.random() * Math.PI * 2
             balloon.userData.speed = 0.3 + Math.random() * 0.4
+            balloon.userData.clickable = true
+            balloon.userData.type = 'balloon'
+
+            // Invisible hit-sphere covering balloon + present
+            const hitSphere = new THREE.Mesh(
+                new THREE.SphereGeometry(1.3, 6, 6),
+                new THREE.MeshBasicMaterial({ visible: false })
+            )
+            hitSphere.position.y = -0.9
+            hitSphere.userData.clickable = true
+            hitSphere.userData.type = 'balloon'
+            hitSphere.userData.balloonRef = balloon
+            balloon.add(hitSphere)
+            this.balloonHitSpheres.push(hitSphere)
 
             this.add(balloon)
             this.balloons.push(balloon)
@@ -765,6 +807,21 @@ export default class AnimalCrossingScene extends BaseScene {
                 pauseUntil: this.time.elapsed + Math.random() * 3000,
                 hopPhase: Math.random() * Math.PI * 2
             }
+            villager.userData.species = spec.name
+            villager.userData.clickable = true
+            villager.userData.type = 'villager'
+
+            // Invisible hit-sphere for tap-to-talk
+            const hitSphere = new THREE.Mesh(
+                new THREE.SphereGeometry(0.8, 6, 6),
+                new THREE.MeshBasicMaterial({ visible: false })
+            )
+            hitSphere.position.y = 1.0
+            hitSphere.userData.clickable = true
+            hitSphere.userData.type = 'villager'
+            hitSphere.userData.villagerRef = villager
+            villager.add(hitSphere)
+            this.villagerHitSpheres.push(hitSphere)
 
             this.add(villager)
             this.villagers.push(villager)
@@ -958,9 +1015,11 @@ export default class AnimalCrossingScene extends BaseScene {
         const appleEl = document.getElementById('appleCount')
         const fishEl = document.getElementById('fishCount')
         const flowerEl = document.getElementById('flowerCount')
+        const bellEl = document.getElementById('bellCount')
         if (appleEl) appleEl.textContent = this.appleCount
         if (fishEl) fishEl.textContent = this.fishCount
         if (flowerEl) flowerEl.textContent = this.flowerCount
+        if (bellEl) bellEl.textContent = this.bellCount
     }
 
     showGameplayToast(text) {
@@ -1113,6 +1172,326 @@ export default class AnimalCrossingScene extends BaseScene {
         super.destroy()
     }
 
+    // ── Butterflies: catchable bugs fluttering over the flowers ──────
+    setButterflies() {
+        const wingColors = ['#ffd94d', '#ff8cb3', '#8cd9ff', '#c9a5ff', '#ffb24d', '#a5ffc9']
+
+        for (let i = 0; i < 6; i++) {
+            const butterfly = new THREE.Group()
+            const color = wingColors[i % wingColors.length]
+
+            const body = new THREE.Mesh(
+                new THREE.CapsuleGeometry(0.03, 0.12, 4, 6),
+                new THREE.MeshStandardMaterial({ color: '#3b2d20', roughness: 0.8 })
+            )
+            butterfly.add(body)
+
+            const wingMaterial = new THREE.MeshStandardMaterial({
+                color,
+                roughness: 0.6,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.95
+            })
+            const wingGeo = new THREE.CircleGeometry(0.16, 8, 0, Math.PI)
+            const wingL = new THREE.Mesh(wingGeo, wingMaterial)
+            wingL.position.set(-0.03, 0.02, 0)
+            const wingR = new THREE.Mesh(wingGeo, wingMaterial)
+            wingR.position.set(0.03, 0.02, 0)
+            wingR.rotation.y = Math.PI
+            butterfly.add(wingL)
+            butterfly.add(wingR)
+            butterfly.userData.wings = [wingL, wingR]
+
+            const angle = Math.random() * Math.PI * 2
+            const radius = 5 + Math.random() * 6
+            butterfly.position.set(Math.cos(angle) * radius, 1.2 + Math.random() * 1.2, Math.sin(angle) * radius)
+            butterfly.userData.fly = {
+                angle: Math.random() * Math.PI * 2,
+                radius: 4 + Math.random() * 7,
+                height: butterfly.position.y,
+                speed: 0.25 + Math.random() * 0.3,
+                wobble: Math.random() * Math.PI * 2
+            }
+            butterfly.userData.clickable = true
+            butterfly.userData.type = 'butterfly'
+
+            const hitSphere = new THREE.Mesh(
+                new THREE.SphereGeometry(0.5, 6, 6),
+                new THREE.MeshBasicMaterial({ visible: false })
+            )
+            hitSphere.userData.clickable = true
+            hitSphere.userData.type = 'butterfly'
+            hitSphere.userData.butterflyRef = butterfly
+            butterfly.add(hitSphere)
+            this.butterflyHitSpheres.push(hitSphere)
+
+            this.add(butterfly)
+            this.butterflies.push(butterfly)
+        }
+    }
+
+    catchButterfly(butterfly) {
+        if (!butterfly || butterfly.userData.caught) return
+        butterfly.userData.caught = true
+        butterfly.visible = false
+
+        this.butterflyCount++
+        this.addBells(100)
+        this.showGameplayToast(`🦋 抓到了一只蝴蝶！(${this.butterflyCount}) 💰+100`)
+
+        setTimeout(() => {
+            butterfly.userData.caught = false
+            butterfly.visible = true
+        }, 12000 + Math.random() * 8000)
+    }
+
+    // ── Dig spots: glowing star marks hiding fossils and bells ───────
+    setDigSpots() {
+        const starTexture = this.makeStarTexture()
+
+        const spots = [
+            [5, -10], [-4, 10], [9, 9], [-10, -3]
+        ]
+
+        spots.forEach(([x, z]) => {
+            const spot = new THREE.Group()
+
+            const star = new THREE.Mesh(
+                new THREE.PlaneGeometry(0.6, 0.6),
+                new THREE.MeshBasicMaterial({
+                    map: starTexture,
+                    transparent: true,
+                    depthWrite: false
+                })
+            )
+            star.rotation.x = -Math.PI * 0.5
+            star.position.y = 0.03
+            spot.add(star)
+            spot.userData.star = star
+
+            spot.position.set(x, 0, z)
+            spot.userData.clickable = true
+            spot.userData.type = 'digSpot'
+            spot.userData.dug = false
+
+            const hitSphere = new THREE.Mesh(
+                new THREE.SphereGeometry(0.7, 6, 6),
+                new THREE.MeshBasicMaterial({ visible: false })
+            )
+            hitSphere.position.y = 0.2
+            hitSphere.userData.clickable = true
+            hitSphere.userData.type = 'digSpot'
+            hitSphere.userData.spotRef = spot
+            spot.add(hitSphere)
+            this.digHitSpheres.push(hitSphere)
+
+            this.add(spot)
+            this.digSpots.push(spot)
+        })
+    }
+
+    makeStarTexture() {
+        const canvas = document.createElement('canvas')
+        canvas.width = 64
+        canvas.height = 64
+        const ctx = canvas.getContext('2d')
+        ctx.translate(32, 32)
+        ctx.beginPath()
+        for (let i = 0; i < 4; i++) {
+            ctx.moveTo(0, -26)
+            ctx.quadraticCurveTo(4, -4, 26, 0)
+            ctx.quadraticCurveTo(4, 4, 0, 26)
+            ctx.quadraticCurveTo(-4, 4, -26, 0)
+            ctx.quadraticCurveTo(-4, -4, 0, -26)
+        }
+        ctx.fillStyle = '#fff3b0'
+        ctx.shadowColor = '#ffdf4d'
+        ctx.shadowBlur = 10
+        ctx.fill()
+        const texture = new THREE.CanvasTexture(canvas)
+        return texture
+    }
+
+    digAtSpot(spot) {
+        if (!spot || spot.userData.dug) return
+        spot.userData.dug = true
+        spot.userData.star.visible = false
+
+        const roll = Math.random()
+        let toast
+        if (roll < 0.4) {
+            this.addBells(200)
+            toast = '🦴 挖到了一块化石！💰+200'
+        } else if (roll < 0.8) {
+            this.addBells(300)
+            toast = '💰 挖到了一袋铃钱！💰+300'
+        } else {
+            this.addBells(500)
+            toast = '✨ 挖到了稀有矿石！💰+500'
+        }
+        this.showGameplayToast(toast)
+
+        setTimeout(() => {
+            spot.userData.dug = false
+            spot.userData.star.visible = true
+        }, 30000)
+    }
+
+    // ── Tree shaking: bells, bonus fruit, or a wasp nest ─────────────
+    shakeTree(tree) {
+        if (!tree || !tree.userData.shakeable) return
+        const now = this.time.elapsed
+        if (now < tree.userData.shakeCooldownUntil) {
+            this.showGameplayToast('🌳 这棵树刚摇过，歇一会儿吧')
+            return
+        }
+        tree.userData.shakeCooldownUntil = now + 12000
+
+        // Shake animation state consumed by update()
+        this.shakingTrees.push({ tree, until: now + 600 })
+
+        const roll = Math.random()
+        if (roll < 0.55) {
+            const bells = 100 + Math.floor(Math.random() * 5) * 100
+            this.addBells(bells)
+            this.showGameplayToast(`💰 掉下来一袋铃钱！💰+${bells}`)
+        } else if (roll < 0.8) {
+            // Knock a fruit loose for free
+            const fruit = this.apples.find(a => a.userData.parentTree === tree && a.visible && !a.userData.picked && !a.userData.falling)
+            if (fruit) {
+                this.pickApple(fruit)
+            } else {
+                this.addBells(100)
+                this.showGameplayToast('💰 掉下来一袋铃钱！💰+100')
+            }
+        } else {
+            this.showGameplayToast('🐝 不好，摇下了马蜂窝！被蛰了一下！')
+            this.stingFlash()
+        }
+    }
+
+    stingFlash() {
+        const flash = document.createElement('div')
+        flash.style.cssText = `
+            position: fixed; inset: 0; z-index: 1100; pointer-events: none;
+            background: radial-gradient(ellipse at center, transparent 40%, rgba(255,60,40,0.45) 100%);
+            opacity: 0; transition: opacity 0.25s ease;
+        `
+        document.body.appendChild(flash)
+        requestAnimationFrame(() => { flash.style.opacity = '1' })
+        setTimeout(() => {
+            flash.style.opacity = '0'
+            setTimeout(() => flash.remove(), 400)
+        }, 700)
+    }
+
+    // ── Balloon popping: shoot down the present ───────────────────────
+    popBalloon(balloon) {
+        if (!balloon || balloon.userData.popped) return
+        balloon.userData.popped = true
+        balloon.visible = false
+
+        const roll = Math.random()
+        let toast
+        if (roll < 0.5) {
+            const bells = 200 + Math.floor(Math.random() * 4) * 100
+            this.addBells(bells)
+            toast = `🎈 礼物掉下来了！是 💰+${bells} 铃钱！`
+        } else if (roll < 0.8) {
+            this.butterflyCount++
+            toast = '🎈 礼物里是一本《昆虫图鉴》！🦋+1'
+        } else {
+            this.addBells(800)
+            toast = '🎈 礼物里竟然有金矿石！💰+800'
+        }
+        this.showGameplayToast(toast)
+
+        setTimeout(() => {
+            balloon.userData.popped = false
+            balloon.visible = true
+        }, 20000)
+    }
+
+    // ── Villager chat: tap to hear what they say ──────────────────────
+    talkToVillager(villager) {
+        if (!villager) return
+
+        const lines = [
+            '今天也是看展的好天气呢！',
+            '听说广场的画是 AI 画的，好厉害！',
+            '你钓到过旧靴子吗？我钓到过三次……',
+            '树上的果子甜得很，摘一个尝尝吧',
+            '池塘里的鱼最近可机灵了',
+            '气球上的礼物，用弹弓才能打下来哦',
+            '我在练习瑜伽，一、二、一、二……',
+            '下次一起看星星吧！',
+            '这件展品我最喜欢了！'
+        ]
+        const line = lines[Math.floor(Math.random() * lines.length)]
+
+        // Villager pauses and faces the player while talking
+        const camPos = this.experience.camera?.instance?.position
+        if (camPos) {
+            villager.lookAt(camPos.x, 0, camPos.z)
+        }
+        villager.userData.walk.pauseUntil = this.time.elapsed + 3000
+
+        this.showSpeechBubble(villager, line)
+        this.showGameplayToast(`💬 ${line}`)
+    }
+
+    showSpeechBubble(villager, text) {
+        if (this.activeBubble) {
+            this.activeBubble.parent?.remove(this.activeBubble)
+            this.activeBubble.material.map.dispose()
+            this.activeBubble.material.dispose()
+            this.activeBubble = null
+        }
+
+        const canvas = document.createElement('canvas')
+        canvas.width = 512
+        canvas.height = 192
+        const ctx = canvas.getContext('2d')
+        const r = 36
+        ctx.fillStyle = 'rgba(255,255,255,0.95)'
+        ctx.beginPath()
+        ctx.roundRect(8, 8, 496, 128, r)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.moveTo(226, 134)
+        ctx.lineTo(256, 180)
+        ctx.lineTo(286, 134)
+        ctx.fill()
+        ctx.fillStyle = '#4a3b2a'
+        ctx.font = '34px "Helvetica Neue", Arial, sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(text, 256, 72, 460)
+
+        const texture = new THREE.CanvasTexture(canvas)
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }))
+        sprite.scale.set(2.6, 1.0, 1)
+        sprite.position.set(0, 2.6, 0)
+        sprite.renderOrder = 999
+        villager.add(sprite)
+
+        this.activeBubble = sprite
+        setTimeout(() => {
+            if (this.activeBubble === sprite) {
+                villager.remove(sprite)
+                sprite.material.map.dispose()
+                sprite.material.dispose()
+                this.activeBubble = null
+            }
+        }, 3000)
+    }
+
+    addBells(amount) {
+        this.bellCount += amount
+        this.updateCollectHUD()
+    }
+
     // ── Per-frame animation ───────────────────────────────────────────
     update() {
         const delta = this.time.delta / 1000
@@ -1153,11 +1532,49 @@ export default class AnimalCrossingScene extends BaseScene {
             this.fountainDrops.geometry.attributes.position.needsUpdate = true
         }
 
-        // Balloons bob and drift
+        // Balloons bob and drift (skip popped ones)
         this.balloons.forEach((balloon) => {
+            if (balloon.userData.popped) return
             balloon.userData.drift += delta * 0.15
             balloon.position.y = balloon.userData.baseY + Math.sin(now * 0.001 * balloon.userData.speed + balloon.userData.drift) * 0.8
             balloon.position.x += Math.sin(now * 0.0003 + balloon.userData.drift) * delta * 0.5
+        })
+
+        // Butterflies flutter in loops, wings flapping
+        this.butterflies.forEach((butterfly) => {
+            if (butterfly.userData.caught) return
+            const fly = butterfly.userData.fly
+            fly.angle += delta * fly.speed
+            fly.wobble += delta * 3
+            butterfly.position.x = Math.cos(fly.angle) * fly.radius
+            butterfly.position.z = Math.sin(fly.angle) * fly.radius
+            butterfly.position.y = fly.height + Math.sin(fly.wobble) * 0.3
+            butterfly.rotation.y = -fly.angle
+
+            const flap = Math.sin(now * 0.02 + fly.wobble) * 0.9
+            const [wingL, wingR] = butterfly.userData.wings
+            wingL.rotation.y = flap
+            wingR.rotation.y = Math.PI - flap
+        })
+
+        // Shaking trees wobble hard for a moment
+        for (let i = this.shakingTrees.length - 1; i >= 0; i--) {
+            const { tree, until } = this.shakingTrees[i]
+            if (now > until) {
+                tree.rotation.x = 0
+                this.shakingTrees.splice(i, 1)
+            } else {
+                tree.rotation.x = Math.sin(now * 0.08) * 0.06
+            }
+        }
+
+        // Dig spot stars twinkle
+        this.digSpots.forEach((spot, i) => {
+            const star = spot.userData.star
+            if (!star.visible) return
+            const s = 0.9 + Math.sin(now * 0.004 + i * 1.7) * 0.15
+            star.scale.setScalar(s)
+            star.rotation.z = now * 0.0008 + i
         })
 
         // Villagers wander: walk → hesitate → pick a new spot
