@@ -11,6 +11,9 @@ export default class RaycasterManager {
         this.raycaster = new THREE.Raycaster()
         this.mouse = new THREE.Vector2()
 
+        this.crosshair = document.getElementById('crosshair')
+        this._hoverTimer = 0
+
         this.setEventListeners()
     }
 
@@ -22,11 +25,35 @@ export default class RaycasterManager {
         window.addEventListener('mousemove', (event) => {
             this.onMouseMove(event)
         })
+
+        // Show the crosshair only while the pointer is locked (immersive
+        // mode); on touch devices there is no lock and no need for it
+        document.addEventListener('pointerlockchange', () => {
+            if (this.crosshair) {
+                this.crosshair.classList.toggle('visible', !!document.pointerLockElement)
+                if (!document.pointerLockElement) {
+                    this.crosshair.classList.remove('active')
+                }
+            }
+        })
     }
 
     onMouseMove(event) {
         this.mouse.x = (event.clientX / this.sizes.width) * 2 - 1
         this.mouse.y = -(event.clientY / this.sizes.height) * 2 + 1
+    }
+
+    // While the pointer is locked the OS stops reporting cursor positions,
+    // so clicks must raycast from the screen center (what the player is
+    // actually aiming at) instead of the stale pre-lock cursor position.
+    getPointerNDC(event) {
+        if (document.pointerLockElement) {
+            return { x: 0, y: 0 }
+        }
+        return {
+            x: (event.clientX / this.sizes.width) * 2 - 1,
+            y: -(event.clientY / this.sizes.height) * 2 + 1
+        }
     }
 
     onClick(event) {
@@ -44,14 +71,53 @@ export default class RaycasterManager {
             return
         }
 
-        this.mouse.x = (event.clientX / this.sizes.width) * 2 - 1
-        this.mouse.y = -(event.clientY / this.sizes.height) * 2 + 1
+        const ndc = this.getPointerNDC(event)
+        this.mouse.x = ndc.x
+        this.mouse.y = ndc.y
 
         this.raycaster.setFromCamera(this.mouse, this.camera.instance)
 
-        // Collect hits from all interactive object groups, then pick the
-        // NEAREST one — priority-by-type used to let a far flower block a
-        // close pond click ("can't fish / can't pick apples").
+        const candidates = this.collectCandidates()
+        if (candidates.length === 0) return
+
+        candidates.sort((a, b) => a.hit.distance - b.hit.distance)
+        const nearest = candidates[0]
+        const scene = this.experience.world?.sceneManager?.getCurrentScene()
+
+        switch (nearest.kind) {
+            case 'painting': {
+                const paintingMesh = nearest.hit.object
+                const painting = paintingMesh.userData.painting
+                if (painting && this.camera) {
+                    this.camera.enterPresentationMode(paintingMesh, painting)
+                }
+                break
+            }
+            case 'easel': {
+                document.dispatchEvent(new CustomEvent('easel-clicked', {
+                    detail: {
+                        object: nearest.hit.object,
+                        intersection: nearest.hit
+                    }
+                }))
+                break
+            }
+            case 'apple':
+                scene?.pickApple(nearest.hit.object.userData.appleRef)
+                break
+            case 'flower':
+                scene?.pickFlower(nearest.hit.object.userData.flowerRef)
+                break
+            case 'pond':
+                scene?.onPondClick(nearest.hit.point)
+                break
+        }
+    }
+
+    // Collect hits from all interactive object groups so the NEAREST one
+    // wins — priority-by-type used to let a far flower block a close pond
+    // click ("can't fish / can't pick apples").
+    collectCandidates() {
         const candidates = []
 
         if (this.experience.world && this.experience.world.paintings) {
@@ -90,39 +156,7 @@ export default class RaycasterManager {
             hits.forEach(h => candidates.push({ kind: 'pond', hit: h }))
         }
 
-        if (candidates.length === 0) return
-
-        candidates.sort((a, b) => a.hit.distance - b.hit.distance)
-        const nearest = candidates[0]
-
-        switch (nearest.kind) {
-            case 'painting': {
-                const paintingMesh = nearest.hit.object
-                const painting = paintingMesh.userData.painting
-                if (painting && this.camera) {
-                    this.camera.enterPresentationMode(paintingMesh, painting)
-                }
-                break
-            }
-            case 'easel': {
-                document.dispatchEvent(new CustomEvent('easel-clicked', {
-                    detail: {
-                        object: nearest.hit.object,
-                        intersection: nearest.hit
-                    }
-                }))
-                break
-            }
-            case 'apple':
-                scene.pickApple(nearest.hit.object.userData.appleRef)
-                break
-            case 'flower':
-                scene.pickFlower(nearest.hit.object.userData.flowerRef)
-                break
-            case 'pond':
-                scene.onPondClick(nearest.hit.point)
-                break
-        }
+        return candidates
     }
 
     update() {
@@ -130,5 +164,16 @@ export default class RaycasterManager {
         if (this.camera && this.camera.instance) {
             this.raycaster.setFromCamera(this.mouse, this.camera.instance)
         }
+
+        // Crosshair hover feedback while pointer-locked (throttled)
+        if (!document.pointerLockElement || !this.crosshair || !this.camera?.instance) return
+
+        this._hoverTimer -= this.experience.time.delta / 1000
+        if (this._hoverTimer > 0) return
+        this._hoverTimer = 0.12
+
+        this.raycaster.setFromCamera({ x: 0, y: 0 }, this.camera.instance)
+        const candidates = this.collectCandidates()
+        this.crosshair.classList.toggle('active', candidates.length > 0)
     }
-} 
+}

@@ -112,6 +112,7 @@ export default class Experience {
         this.camera.update()
         this.playerControls.update()
         this.world.update()
+        this.raycasterManager.update()
         this.renderer.update()
     }
 
