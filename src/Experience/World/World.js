@@ -4,6 +4,7 @@ import Environment from './Environment.js'
 import Paintings from './Paintings.js'
 import Particles from './Particles.js'
 import Easel from './Easel.js'
+import Player from './Player.js'
 import SceneManager from './SceneManager.js'
 
 export default class World {
@@ -18,6 +19,7 @@ export default class World {
         this.paintings = new Paintings()
         this.particles = new Particles()
         this.easel = new Easel()
+        this.player = new Player()
 
         this.sceneManager = new SceneManager()
         this.sceneManager.setup()
@@ -153,7 +155,20 @@ export default class World {
             this.sceneManager.update()
         }
 
+        if (this.player) {
+            this.player.update()
+        }
+
         this.checkPaintingProximity()
+    }
+
+    // Position used for proximity checks: the visible character when the
+    // third-person player is active, otherwise the first-person camera.
+    getInteractionPosition() {
+        if (this.player && this.player.active) {
+            return this.player.position
+        }
+        return this.experience.camera.instance.position
     }
 
     // Show a lightweight action hint near a painting (no auto popup).
@@ -170,7 +185,7 @@ export default class World {
             return
         }
 
-        const camPos = camera.instance.position
+        const camPos = this.getInteractionPosition()
         const tmp = new THREE.Vector3()
         let nearest = null
         let nearestDist = Infinity

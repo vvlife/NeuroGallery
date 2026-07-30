@@ -69,6 +69,11 @@ export default class AnimalCrossingScene extends BaseScene {
         this.setButterflies()    // catchable butterflies near the flowers
         this.setDigSpots()       // glowing dig spots (fossils & bells)
         this.setupGameplay()     // apple picking + fishing
+
+        // Third-person island mode: visible character + follow camera
+        if (this.experience.world?.player) {
+            this.experience.world.player.enter()
+        }
     }
 
     // Some forks may not need the fence; keep it as its own step so the
@@ -922,6 +927,31 @@ export default class AnimalCrossingScene extends BaseScene {
         return villager
     }
 
+    // ── Obstacles for the third-person player collision ──────────────
+    getObstacles() {
+        const obstacles = [
+            { x: 0, z: 0, r: 2.0 },        // fountain
+            { x: 4.5, z: 2.5, r: 0.9 },    // notice board
+            { x: -8.5, z: -7, r: 3.1 },    // pond
+        ]
+        // Artwork stands around the plaza
+        const stands = [
+            [-6, -6], [0, -8], [6, -6],
+            [-6, 6], [0, 8], [6, 6]
+        ]
+        stands.forEach(([x, z]) => obstacles.push({ x, z, r: 1.1 }))
+        // Fruit trees
+        this.trees.forEach(tree => {
+            obstacles.push({ x: tree.position.x, z: tree.position.z, r: 0.55 })
+        })
+        // Houses
+        const houses = [
+            [-14, -16], [0, -19], [14, -16], [-20, 6], [20, 6]
+        ]
+        houses.forEach(([x, z]) => obstacles.push({ x, z, r: 2.6 }))
+        return obstacles
+    }
+
     // ── Gameplay: apple picking & fishing ─────────────────────────────
     setupGameplay() {
         // Show the collect HUD while this scene is active
@@ -958,7 +988,7 @@ export default class AnimalCrossingScene extends BaseScene {
         const textEl = document.getElementById('actionGuideText')
         if (!el || !textEl) return
 
-        const camPos = this.experience.camera?.instance?.position
+        const camPos = this.experience.world?.getInteractionPosition?.() || this.experience.camera?.instance?.position
         if (!camPos) return
 
         let hint = null
@@ -1159,6 +1189,11 @@ export default class AnimalCrossingScene extends BaseScene {
     }
 
     destroy() {
+        // Leave third-person island mode, back to first-person
+        if (this.experience.world?.player) {
+            this.experience.world.player.exit()
+        }
+
         const hud = document.getElementById('collectHud')
         if (hud) hud.classList.remove('visible')
         const toast = document.getElementById('gameplayToast')
