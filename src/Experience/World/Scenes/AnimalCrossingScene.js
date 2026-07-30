@@ -1403,6 +1403,7 @@ export default class AnimalCrossingScene extends BaseScene {
         // Season toggle button next to the clock
         this.seasonBtn = document.createElement('button')
         this.seasonBtn.id = 'seasonBtn'
+        this.seasonBtn.className = 'season-btn'
         this.seasonBtn.textContent = '🌸 春'
         this.seasonBtn.style.cssText = `
             position: fixed; top: 20px; left: calc(50% + 90px); z-index: 950;
@@ -1543,6 +1544,7 @@ export default class AnimalCrossingScene extends BaseScene {
         // Clock UI
         this.clockEl = document.createElement('div')
         this.clockEl.id = 'dayNightClock'
+        this.clockEl.className = 'day-night-clock'
         this.clockEl.style.cssText = `
             position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
             z-index: 900; padding: 8px 18px; border-radius: 20px;

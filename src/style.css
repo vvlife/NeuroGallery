@@ -1209,3 +1209,18 @@ html {
     border-left: 1px solid rgba(255, 255, 255, 0.25);
     padding-left: 14px;
 }
+
+/* Island clock & season button — mobile adjustments */
+@media (max-width: 768px) {
+    .day-night-clock {
+        top: 62px !important;
+        font-size: 12px !important;
+        padding: 6px 14px !important;
+    }
+
+    .season-btn {
+        top: 62px !important;
+        font-size: 12px !important;
+        padding: 6px 12px !important;
+    }
+}
