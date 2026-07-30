@@ -39,6 +39,7 @@ export default class Inventory {
         this.items[itemId] = (this.items[itemId] || 0) + count
         this.emit()
         this.renderGrid()
+        window.experience?.world?.quests?.onCollectItem?.()
     }
 
     remove(itemId, count = 1) {

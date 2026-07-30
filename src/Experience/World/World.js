@@ -6,6 +6,7 @@ import Particles from './Particles.js'
 import Easel from './Easel.js'
 import Player from './Player.js'
 import Inventory from './Inventory.js'
+import Quests from './Quests.js'
 import SceneManager from './SceneManager.js'
 
 export default class World {
@@ -22,6 +23,7 @@ export default class World {
         this.easel = new Easel()
         this.player = new Player()
         this.inventory = new Inventory()
+        this.quests = new Quests()
 
         this.sceneManager = new SceneManager()
         this.sceneManager.setup()

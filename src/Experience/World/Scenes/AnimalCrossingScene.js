@@ -1404,6 +1404,11 @@ export default class AnimalCrossingScene extends BaseScene {
             this.experience.world.inventory.show()
         }
 
+        // Quest button
+        if (this.experience.world?.quests) {
+            this.experience.world.quests.show()
+        }
+
         // Show the guide card once per session
         if (!this._guideShown) {
             const guide = document.getElementById('acGuide')
@@ -1584,6 +1589,7 @@ export default class AnimalCrossingScene extends BaseScene {
 
         this.fishCount++
         this.gain('fish')
+        this.experience.world?.quests?.onFish?.()
         this.updateCollectHUD()
         this.showGameplayToast(`${emoji} 钓到了一条${name}！`)
         this.showCaughtFish(emoji)
@@ -1658,6 +1664,11 @@ export default class AnimalCrossingScene extends BaseScene {
         // Hide backpack
         if (this.experience.world?.inventory) {
             this.experience.world.inventory.hide()
+        }
+
+        // Hide quest panel
+        if (this.experience.world?.quests) {
+            this.experience.world.quests.hide()
         }
 
         const hud = document.getElementById('collectHud')
@@ -2220,6 +2231,7 @@ export default class AnimalCrossingScene extends BaseScene {
                     this.fallingApples.splice(i, 1)
                     this.appleCount++
                     this.gain('apple')
+                    this.experience.world?.quests?.onPickApple?.()
                     this.updateCollectHUD()
                     this.showGameplayToast(`🍎 摘到一个水果！(${this.appleCount})`)
                     this.respawnApple(apple)
