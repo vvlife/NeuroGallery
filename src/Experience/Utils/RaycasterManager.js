@@ -126,6 +126,9 @@ export default class RaycasterManager {
             case 'villager':
                 scene?.talkToVillager(nearest.hit.object.userData.villagerRef)
                 break
+            case 'vivy':
+                scene?.talkToVivy()
+                break
             case 'stardust':
                 scene?.collectStardust(nearest.hit.object.userData.orbRef)
                 break
@@ -215,6 +218,11 @@ export default class RaycasterManager {
         if (scene && scene.villagerHitSpheres && scene.villagerHitSpheres.length > 0) {
             const hits = this.raycaster.intersectObjects(scene.villagerHitSpheres, false)
             hits.forEach(h => candidates.push({ kind: 'villager', hit: h }))
+        }
+
+        if (scene && scene.vivyHitSphere && scene.vivyHitSphere.visible) {
+            const hits = this.raycaster.intersectObject(scene.vivyHitSphere, false)
+            hits.forEach(h => candidates.push({ kind: 'vivy', hit: h }))
         }
 
         if (scene && scene.stardustHitSpheres && scene.stardustHitSpheres.length > 0) {

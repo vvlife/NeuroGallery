@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import BaseScene from './BaseScene.js'
+import { createVivy, VIVY_LINES } from '../Vivy.js'
 
 /**
  * Animal Crossing inspired scene.
@@ -66,6 +67,7 @@ export default class AnimalCrossingScene extends BaseScene {
         this.setClouds()
         this.setBalloons()
         this.setVillagers()      // animal NPCs wandering the plaza
+        this.setVivy()           // Vivy, the island's special resident
         this.setButterflies()    // catchable butterflies near the flowers
         this.setDigSpots()       // glowing dig spots (fossils & bells)
         this.setupGameplay()     // apple picking + fishing
@@ -1016,6 +1018,15 @@ export default class AnimalCrossingScene extends BaseScene {
             }
         }
 
+        // Vivy nearby
+        if (!hint && this.vivy) {
+            this.vivy.getWorldPosition(tmp)
+            const d = camPos.distanceTo(tmp)
+            if (d < 3.5) {
+                hint = '💬 点击 Vivy，和她聊聊'
+            }
+        }
+
         // Flowers
         if (!hint) {
             for (const flower of this.flowers) {
@@ -1527,6 +1538,54 @@ export default class AnimalCrossingScene extends BaseScene {
         this.updateCollectHUD()
     }
 
+    // ── Vivy: the island's special resident ──────────────────────────
+    setVivy() {
+        this.vivy = createVivy()
+        this.vivy.position.set(3, 0, -4)
+
+        this.vivy.userData.walk = {
+            target: null,
+            speed: 0.55,
+            pauseUntil: this.time.elapsed + 2000,
+            hopPhase: 0,
+            homeRadius: 6
+        }
+        this.vivy.userData.clickable = true
+        this.vivy.userData.type = 'vivy'
+
+        const hitSphere = new THREE.Mesh(
+            new THREE.SphereGeometry(0.9, 6, 6),
+            new THREE.MeshBasicMaterial({ visible: false })
+        )
+        hitSphere.position.y = 1.0
+        hitSphere.userData.clickable = true
+        hitSphere.userData.type = 'vivy'
+        hitSphere.userData.vivyRef = this.vivy
+        this.vivy.add(hitSphere)
+        this.vivyHitSphere = hitSphere
+
+        this.add(this.vivy)
+    }
+
+    talkToVivy() {
+        if (!this.vivy) return
+
+        const line = VIVY_LINES[Math.floor(Math.random() * VIVY_LINES.length)]
+
+        // Vivy pauses and faces the player while speaking
+        const playerPos = this.experience.world?.getInteractionPosition?.()
+        if (playerPos) {
+            this.vivy.lookAt(playerPos.x, 0, playerPos.z)
+        }
+        this.vivy.userData.walk.pauseUntil = this.time.elapsed + 4000
+
+        this.showSpeechBubble(this.vivy, line)
+        this.showGameplayToast(`🎤 Vivy：${line}`)
+
+        // Notify quest system if present
+        this.experience.world?.quests?.onTalkToVivy?.()
+    }
+
     // ── Per-frame animation ───────────────────────────────────────────
     update() {
         const delta = this.time.delta / 1000
@@ -1715,6 +1774,53 @@ export default class AnimalCrossingScene extends BaseScene {
             flower.scale.setScalar(Math.min(1, flower.scale.x + delta * 1.5))
             if (flower.scale.x >= 1) {
                 this.growingFlowers.splice(i, 1)
+            }
+        }
+
+        // Vivy strolls gently near the plaza, hair swaying
+        if (this.vivy) {
+            const walk = this.vivy.userData.walk
+
+            if (now < walk.pauseUntil) {
+                // Idle: gentle breathing, hair sway
+                this.vivy.position.y = Math.sin(now * 0.0012) * 0.015
+            } else {
+                if (!walk.target) {
+                    const angle = Math.random() * Math.PI * 2
+                    const radius = 2 + Math.random() * walk.homeRadius
+                    walk.target = new THREE.Vector3(
+                        3 + Math.cos(angle) * radius * 0.6,
+                        0,
+                        -4 + Math.sin(angle) * radius * 0.6
+                    )
+                }
+
+                const toTarget = walk.target.clone().sub(this.vivy.position)
+                toTarget.y = 0
+                const distance = toTarget.length()
+
+                if (distance < 0.15) {
+                    walk.target = null
+                    walk.pauseUntil = now + 3000 + Math.random() * 5000
+                } else {
+                    toTarget.normalize()
+                    this.vivy.position.addScaledVector(toTarget, walk.speed * delta)
+
+                    const targetRotation = Math.atan2(toTarget.x, toTarget.z)
+                    let diff = targetRotation - this.vivy.rotation.y
+                    while (diff > Math.PI) diff -= Math.PI * 2
+                    while (diff < -Math.PI) diff += Math.PI * 2
+                    this.vivy.rotation.y += diff * Math.min(1, delta * 6)
+
+                    // Graceful glide: tiny bob, arms sway softly
+                    walk.hopPhase += delta * 5
+                    this.vivy.position.y = Math.abs(Math.sin(walk.hopPhase)) * 0.02
+                    const arms = this.vivy.userData.arms
+                    if (arms) {
+                        arms[0].rotation.x = Math.sin(walk.hopPhase) * 0.2
+                        arms[1].rotation.x = -Math.sin(walk.hopPhase) * 0.2
+                    }
+                }
             }
         }
 
