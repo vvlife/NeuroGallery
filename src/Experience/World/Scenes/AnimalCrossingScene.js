@@ -70,6 +70,7 @@ export default class AnimalCrossingScene extends BaseScene {
         this.setVivy()           // Vivy, the island's special resident
         this.setButterflies()    // catchable butterflies near the flowers
         this.setDigSpots()       // glowing dig spots (fossils & bells)
+        this.setGroundItems()    // scattered wood / stone / shells
         this.setupGameplay()     // apple picking + fishing
 
         // Third-person island mode: visible character + follow camera
@@ -954,12 +955,94 @@ export default class AnimalCrossingScene extends BaseScene {
         return obstacles
     }
 
+    // ── Ground items: wood / stone / shells scattered for crafting ───
+    setGroundItems() {
+        this.groundItems = []
+        this.groundHitSpheres = []
+
+        const defs = [
+            { type: 'wood', icon: '🪵', count: 6, make: () => {
+                const m = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.05, 0.06, 0.5, 6),
+                    new THREE.MeshStandardMaterial({ color: '#8b5a2b', roughness: 0.9 })
+                )
+                m.rotation.z = Math.PI / 2
+                m.rotation.y = Math.random() * Math.PI
+                m.position.y = 0.06
+                return m
+            }},
+            { type: 'stone', icon: '🪨', count: 5, make: () => {
+                const m = new THREE.Mesh(
+                    new THREE.DodecahedronGeometry(0.14, 0),
+                    new THREE.MeshStandardMaterial({ color: '#9a9a9a', roughness: 0.95 })
+                )
+                m.position.y = 0.12
+                return m
+            }},
+            { type: 'shell', icon: '🐚', count: 4, make: () => {
+                const m = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.12, 8, 6, 0, Math.PI),
+                    new THREE.MeshStandardMaterial({ color: '#fff0e0', roughness: 0.6 })
+                )
+                m.rotation.x = -Math.PI * 0.4
+                m.position.y = 0.05
+                return m
+            }}
+        ]
+
+        defs.forEach((def) => {
+            for (let i = 0; i < def.count; i++) {
+                const mesh = def.make()
+                const angle = Math.random() * Math.PI * 2
+                const radius = 3.5 + Math.random() * 7
+                const group = new THREE.Group()
+                group.add(mesh)
+                group.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius)
+                group.userData.itemType = def.type
+                group.userData.icon = def.icon
+
+                const hitSphere = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.55, 6, 6),
+                    new THREE.MeshBasicMaterial({ visible: false })
+                )
+                hitSphere.position.y = 0.2
+                hitSphere.userData.clickable = true
+                hitSphere.userData.type = 'groundItem'
+                hitSphere.userData.itemRef = group
+                group.add(hitSphere)
+                this.groundHitSpheres.push(hitSphere)
+
+                this.add(group)
+                this.groundItems.push(group)
+            }
+        })
+    }
+
+    pickGroundItem(item) {
+        if (!item || !item.visible) return
+        item.visible = false
+
+        const type = item.userData.itemType
+        const icon = item.userData.icon
+        this.gain(type)
+        this.showGameplayToast(`${icon} 拾取了材料！(${type === 'wood' ? '木材' : type === 'stone' ? '石头' : '贝壳'})`)
+
+        setTimeout(() => {
+            item.visible = true
+        }, 18000)
+    }
+
     // ── Gameplay: apple picking & fishing ─────────────────────────────
     setupGameplay() {
         // Show the collect HUD while this scene is active
         const hud = document.getElementById('collectHud')
         if (hud) hud.classList.add('visible')
         this.updateCollectHUD()
+
+        // Backpack button
+        if (this.experience.world?.inventory) {
+            this.experience.world.inventory.show()
+        }
 
         // Show the guide card once per session
         if (!this._guideShown) {
@@ -1135,6 +1218,7 @@ export default class AnimalCrossingScene extends BaseScene {
         else { emoji = '👢'; name = '旧靴子' }
 
         this.fishCount++
+        this.gain('fish')
         this.updateCollectHUD()
         this.showGameplayToast(`${emoji} 钓到了一条${name}！`)
         this.showCaughtFish(emoji)
@@ -1184,6 +1268,7 @@ export default class AnimalCrossingScene extends BaseScene {
         flower.visible = false
 
         this.flowerCount++
+        this.gain('flower')
         this.updateCollectHUD()
         this.showGameplayToast(`🌸 摘到一朵花！(${this.flowerCount})`)
         this.respawnFlower(flower)
@@ -1203,6 +1288,11 @@ export default class AnimalCrossingScene extends BaseScene {
         // Leave third-person island mode, back to first-person
         if (this.experience.world?.player) {
             this.experience.world.player.exit()
+        }
+
+        // Hide backpack
+        if (this.experience.world?.inventory) {
+            this.experience.world.inventory.hide()
         }
 
         const hud = document.getElementById('collectHud')
@@ -1283,6 +1373,7 @@ export default class AnimalCrossingScene extends BaseScene {
         butterfly.visible = false
 
         this.butterflyCount++
+        this.gain('butterfly')
         this.addBells(100)
         this.showGameplayToast(`🦋 抓到了一只蝴蝶！(${this.butterflyCount}) 💰+100`)
 
@@ -1368,12 +1459,14 @@ export default class AnimalCrossingScene extends BaseScene {
         let toast
         if (roll < 0.4) {
             this.addBells(200)
+            this.gain('fossil')
             toast = '🦴 挖到了一块化石！💰+200'
         } else if (roll < 0.8) {
             this.addBells(300)
             toast = '💰 挖到了一袋铃钱！💰+300'
         } else {
             this.addBells(500)
+            this.gain('ore')
             toast = '✨ 挖到了稀有矿石！💰+500'
         }
         this.showGameplayToast(toast)
@@ -1535,7 +1628,16 @@ export default class AnimalCrossingScene extends BaseScene {
 
     addBells(amount) {
         this.bellCount += amount
+        if (this.experience.world?.inventory) {
+            this.experience.world.inventory.addBells(amount)
+        }
         this.updateCollectHUD()
+    }
+
+    gain(itemId, count = 1) {
+        if (this.experience.world?.inventory) {
+            this.experience.world.inventory.add(itemId, count)
+        }
     }
 
     // ── Vivy: the island's special resident ──────────────────────────
@@ -1752,6 +1854,7 @@ export default class AnimalCrossingScene extends BaseScene {
                     }
                     this.fallingApples.splice(i, 1)
                     this.appleCount++
+                    this.gain('apple')
                     this.updateCollectHUD()
                     this.showGameplayToast(`🍎 摘到一个水果！(${this.appleCount})`)
                     this.respawnApple(apple)

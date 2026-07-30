@@ -138,6 +138,9 @@ export default class RaycasterManager {
             case 'dataShard':
                 scene?.collectShard(nearest.hit.object.userData.shardRef)
                 break
+            case 'groundItem':
+                scene?.pickGroundItem(nearest.hit.object.userData.itemRef)
+                break
         }
     }
 
@@ -250,6 +253,15 @@ export default class RaycasterManager {
             })
             const hits = this.raycaster.intersectObjects(available, false)
             hits.forEach(h => candidates.push({ kind: 'dataShard', hit: h }))
+        }
+
+        if (scene && scene.groundHitSpheres && scene.groundHitSpheres.length > 0) {
+            const available = scene.groundHitSpheres.filter(s => {
+                const item = s.userData.itemRef
+                return item && item.visible
+            })
+            const hits = this.raycaster.intersectObjects(available, false)
+            hits.forEach(h => candidates.push({ kind: 'groundItem', hit: h }))
         }
 
         return candidates
