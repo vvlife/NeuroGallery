@@ -73,6 +73,7 @@ export default class AnimalCrossingScene extends BaseScene {
         this.setDigSpots()       // glowing dig spots (fossils & bells)
         this.setGroundItems()    // scattered wood / stone / shells
         this.setDIYBench()       // furniture crafting bench
+        this.setShop()           // Nook's stall
         this.restorePlacedFurniture()
         this.setupGameplay()     // apple picking + fishing
 
@@ -1223,6 +1224,174 @@ export default class AnimalCrossingScene extends BaseScene {
         })
     }
 
+    // ── Shop: Nook's stall — buy materials, sell your gatherings ─────
+    setShop() {
+        const stall = new THREE.Group()
+        const woodMat = new THREE.MeshStandardMaterial({ color: '#a0683c', roughness: 0.85 })
+
+        // Counter
+        const counter = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.8, 0.7), woodMat)
+        counter.position.y = 0.4
+        counter.castShadow = true
+        stall.add(counter)
+
+        // Awning (striped, candy style)
+        const awningColors = ['#e8574d', '#ffffff']
+        for (let i = 0; i < 5; i++) {
+            const stripe = new THREE.Mesh(
+                new THREE.BoxGeometry(0.4, 0.05, 1.2),
+                new THREE.MeshStandardMaterial({ color: awningColors[i % 2], roughness: 0.8 })
+            )
+            stripe.position.set(-0.8 + i * 0.4, 1.7, 0)
+            stripe.rotation.z = -0.1
+            stall.add(stripe)
+        }
+        for (const side of [-1, 1]) {
+            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.7, 6), woodMat)
+            pole.position.set(side * 0.85, 0.85, 0.4)
+            stall.add(pole)
+        }
+
+        // Goods on the counter
+        const crate = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 0.35), woodMat)
+        crate.position.set(-0.4, 0.95, 0)
+        stall.add(crate)
+        const fruitPile = new THREE.Mesh(
+            new THREE.SphereGeometry(0.1, 8, 8),
+            new THREE.MeshStandardMaterial({ color: '#ff4d4d', roughness: 0.6 })
+        )
+        fruitPile.position.set(-0.4, 1.12, 0)
+        stall.add(fruitPile)
+
+        stall.position.set(-5.5, 0, 6.5)
+        stall.rotation.y = Math.PI * 0.2
+        stall.userData.clickable = true
+        stall.userData.type = 'shop'
+
+        const hitSphere = new THREE.Mesh(
+            new THREE.SphereGeometry(1.4, 6, 6),
+            new THREE.MeshBasicMaterial({ visible: false })
+        )
+        hitSphere.position.y = 0.9
+        hitSphere.userData.clickable = true
+        hitSphere.userData.type = 'shop'
+        stall.add(hitSphere)
+        this.shopHitSphere = hitSphere
+
+        this.add(stall)
+        this.shop = stall
+    }
+
+    openShop() {
+        if (document.getElementById('shopModal')) return
+
+        const BUY_LIST = [
+            { id: 'wood', name: '木材', icon: '🪵', price: 50 },
+            { id: 'stone', name: '石头', icon: '🪨', price: 50 },
+            { id: 'flower', name: '花苗', icon: '🌸', price: 30 },
+            { id: 'apple', name: '水果', icon: '🍎', price: 40 }
+        ]
+        const SELL_PRICES = {
+            apple: 20, flower: 15, fish: 80, butterfly: 60,
+            fossil: 150, ore: 300, shell: 25
+        }
+
+        const inv = this.experience.world?.inventory
+        const modal = document.createElement('div')
+        modal.id = 'shopModal'
+        modal.style.cssText = `
+            position: fixed; inset: 0; z-index: 1200;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
+        `
+
+        const card = document.createElement('div')
+        card.style.cssText = `
+            width: 460px; max-width: calc(100vw - 40px); max-height: 82vh; overflow-y: auto;
+            background: #fffdf5; border-radius: 20px; padding: 24px;
+            font-family: 'Helvetica Neue', Arial, sans-serif; color: #4a3b2a;
+        `
+
+        const render = () => {
+            const bells = inv?.bells || 0
+            const buyRows = BUY_LIST.map(item => {
+                const afford = bells >= item.price
+                return `
+                    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed #e8dcc8">
+                        <span style="font-size:24px">${item.icon}</span>
+                        <span style="flex:1">${item.name}</span>
+                        <span style="color:#b8860b;font-weight:600">💰${item.price}</span>
+                        <button data-buy="${item.id}" ${afford ? '' : 'disabled'}
+                            style="padding:6px 14px;border:none;border-radius:12px;cursor:${afford ? 'pointer' : 'not-allowed'};
+                                   background:${afford ? '#7ec850' : '#d8d0c0'};color:#fff;font-weight:600">买</button>
+                    </div>
+                `
+            }).join('')
+
+            const sellable = Object.entries(inv?.items || {}).filter(([id]) => SELL_PRICES[id])
+            const sellRows = sellable.length === 0
+                ? '<div style="text-align:center;color:#a89880;font-size:13px;padding:14px 0">背包里没有可以卖的东西</div>'
+                : sellable.map(([id, n]) => {
+                    const def = { apple: '🍎', flower: '🌸', fish: '🐟', butterfly: '🦋', fossil: '🦴', ore: '✨', shell: '🐚' }[id] || '❔'
+                    const names = { apple: '水果', flower: '野花', fish: '鱼', butterfly: '蝴蝶', fossil: '化石', ore: '矿石', shell: '贝壳' }
+                    return `
+                        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed #e8dcc8">
+                            <span style="font-size:24px">${def}</span>
+                            <span style="flex:1">${names[id] || id} ×${n}</span>
+                            <span style="color:#b8860b;font-weight:600">💰${SELL_PRICES[id]}/个</span>
+                            <button data-sell="${id}"
+                                style="padding:6px 14px;border:none;border-radius:12px;cursor:pointer;
+                                       background:#e8a54d;color:#fff;font-weight:600">卖 1 个</button>
+                        </div>
+                    `
+                }).join('')
+
+            return `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                    <h3 style="margin:0;font-size:19px">🏪 狸克商店</h3>
+                    <span style="font-weight:700;color:#b8860b">💰 ${bells}</span>
+                    <button id="shopClose" style="width:32px;height:32px;border:none;border-radius:50%;background:#f0e8d8;font-size:18px;cursor:pointer">×</button>
+                </div>
+                <div style="font-weight:700;margin:14px 0 4px;color:#6b8c4a">🛒 购买</div>
+                ${buyRows}
+                <div style="font-weight:700;margin:16px 0 4px;color:#b8860b">💰 出售</div>
+                ${sellRows}
+            `
+        }
+
+        card.innerHTML = render()
+        modal.appendChild(card)
+        document.body.appendChild(modal)
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal || e.target.id === 'shopClose') {
+                modal.remove()
+                return
+            }
+            const buyBtn = e.target.closest('[data-buy]')
+            if (buyBtn && !buyBtn.disabled) {
+                const item = BUY_LIST.find(i => i.id === buyBtn.dataset.buy)
+                if (item && inv?.spendBells(item.price)) {
+                    inv.add(item.id, 1)
+                    this.showGameplayToast(`${item.icon} 买到了【${item.name}】！`)
+                    this.experience.world?.quests?.onBuy?.(item.id)
+                }
+            }
+            const sellBtn = e.target.closest('[data-sell]')
+            if (sellBtn) {
+                const id = sellBtn.dataset.sell
+                if (inv?.remove(id, 1)) {
+                    inv.addBells(SELL_PRICES[id])
+                    this.showGameplayToast(`💰 卖出了 1 个，+${SELL_PRICES[id]} 铃钱`)
+                    this.experience.world?.quests?.onSell?.(id)
+                }
+            }
+            if (buyBtn || sellBtn) {
+                card.innerHTML = render()
+            }
+        })
+    }
+
     // ── Gameplay: apple picking & fishing ─────────────────────────────
     setupGameplay() {
         // Show the collect HUD while this scene is active
@@ -1239,12 +1408,17 @@ export default class AnimalCrossingScene extends BaseScene {
         if (!this._guideShown) {
             const guide = document.getElementById('acGuide')
             if (guide) {
-                guide.classList.add('visible')
+                guide.style.display = 'flex'
+                requestAnimationFrame(() => guide.classList.add('visible'))
                 const close = document.getElementById('acGuideClose')
                 if (close && !close._bound) {
                     close._bound = true
                     close.addEventListener('click', () => {
                         guide.classList.remove('visible')
+                        // Remove from hit-testing right away — the CSS
+                        // visibility transition otherwise keeps swallowing
+                        // clicks for another ~350ms
+                        guide.style.display = 'none'
                     })
                 }
             }

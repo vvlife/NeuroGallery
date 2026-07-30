@@ -155,6 +155,9 @@ export default class RaycasterManager {
             case 'diyBench':
                 scene?.openDIY()
                 break
+            case 'shop':
+                scene?.openShop()
+                break
         }
     }
 
@@ -245,6 +248,11 @@ export default class RaycasterManager {
         if (scene && scene.diyBenchHitSphere && scene.diyBenchHitSphere.visible) {
             const hits = this.raycaster.intersectObject(scene.diyBenchHitSphere, false)
             hits.forEach(h => candidates.push({ kind: 'diyBench', hit: h }))
+        }
+
+        if (scene && scene.shopHitSphere && scene.shopHitSphere.visible) {
+            const hits = this.raycaster.intersectObject(scene.shopHitSphere, false)
+            hits.forEach(h => candidates.push({ kind: 'shop', hit: h }))
         }
 
         if (scene && scene.stardustHitSpheres && scene.stardustHitSpheres.length > 0) {
