@@ -145,7 +145,12 @@ export default class Inventory {
     toggle() {
         const opening = this.panel.style.display === 'none'
         this.panel.style.display = opening ? 'block' : 'none'
-        if (opening) this.renderGrid()
+        if (opening) {
+            this.renderGrid()
+        } else if (window.experience?.world?.placingFurniture) {
+            // Re-opening the backpack cancels placement mode
+            window.experience.world.placingFurniture = null
+        }
     }
 
     show() {
@@ -171,15 +176,31 @@ export default class Inventory {
 
         grid.innerHTML = entries.map(([id, n]) => {
             const def = ITEM_DEFS[id] || { icon: '❔', name: id }
+            const placeable = def.furniture ? 'cursor:pointer;outline:2px dashed #b89a5a;outline-offset:-2px' : 'cursor:default'
+            const hint = def.furniture ? `${def.name}（点击摆放）` : def.name
             return `
-                <div class="inv-cell" data-item="${id}" title="${def.name}"
-                     style="background:#f7f1e3;border-radius:12px;padding:10px 4px;text-align:center;cursor:default;position:relative">
+                <div class="inv-cell" data-item="${id}" data-furniture="${def.furniture ? 1 : ''}" title="${hint}"
+                     style="background:#f7f1e3;border-radius:12px;padding:10px 4px;text-align:center;${placeable};position:relative">
                     <div style="font-size:24px">${def.icon}</div>
                     <div style="font-size:11px;color:#8b7355;margin-top:2px">${def.name}</div>
                     <span style="position:absolute;top:2px;right:6px;font-size:12px;font-weight:700;color:#6b5a3e">×${n}</span>
                 </div>
             `
         }).join('')
+
+        // Furniture cells start placement mode
+        if (!grid._furnitureBound) {
+            grid._furnitureBound = true
+            grid.addEventListener('click', (e) => {
+                const cell = e.target.closest('.inv-cell')
+                if (!cell || !cell.dataset.furniture) return
+                const scene = window.experience?.world?.sceneManager?.getCurrentScene?.()
+                if (scene?.startPlacing) {
+                    scene.startPlacing(cell.dataset.item)
+                    this.panel.style.display = 'none'
+                }
+            })
+        }
     }
 
     static getItemDef(id) {

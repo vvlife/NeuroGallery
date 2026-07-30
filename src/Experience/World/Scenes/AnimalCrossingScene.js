@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import BaseScene from './BaseScene.js'
 import { createVivy, VIVY_LINES } from '../Vivy.js'
+import { RECIPES, createFurnitureModel, savePlacements, loadPlacements } from '../Furniture.js'
 
 /**
  * Animal Crossing inspired scene.
@@ -71,6 +72,8 @@ export default class AnimalCrossingScene extends BaseScene {
         this.setButterflies()    // catchable butterflies near the flowers
         this.setDigSpots()       // glowing dig spots (fossils & bells)
         this.setGroundItems()    // scattered wood / stone / shells
+        this.setDIYBench()       // furniture crafting bench
+        this.restorePlacedFurniture()
         this.setupGameplay()     // apple picking + fishing
 
         // Third-person island mode: visible character + follow camera
@@ -142,6 +145,7 @@ export default class AnimalCrossingScene extends BaseScene {
         ground.rotation.x = -Math.PI * 0.5
         ground.receiveShadow = true
         this.add(ground)
+        this.groundMesh = ground
 
         // Plaza floor: packed-earth circle
         const plazaGeometry = new THREE.CircleGeometry(7, 32)
@@ -1030,6 +1034,193 @@ export default class AnimalCrossingScene extends BaseScene {
         setTimeout(() => {
             item.visible = true
         }, 18000)
+    }
+
+    // ── DIY bench: craft furniture from gathered materials ───────────
+    setDIYBench() {
+        const woodMat = new THREE.MeshStandardMaterial({ color: '#a0683c', roughness: 0.85 })
+        const benchGroup = new THREE.Group()
+
+        const top = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.08, 0.8), woodMat)
+        top.position.y = 0.75
+        top.castShadow = true
+        benchGroup.add(top)
+
+        for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+            const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.75, 0.08), woodMat)
+            leg.position.set(sx * 0.7, 0.38, sz * 0.3)
+            benchGroup.add(leg)
+        }
+
+        // A little hammer and saw on top (symbolic, AC-style)
+        const hammerHead = new THREE.Mesh(
+            new THREE.BoxGeometry(0.12, 0.08, 0.08),
+            new THREE.MeshStandardMaterial({ color: '#888888', roughness: 0.5, metalness: 0.6 })
+        )
+        hammerHead.position.set(-0.4, 0.83, 0)
+        benchGroup.add(hammerHead)
+        const hammerHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 6), woodMat)
+        hammerHandle.rotation.z = Math.PI / 2.5
+        hammerHandle.position.set(-0.28, 0.83, 0.05)
+        benchGroup.add(hammerHandle)
+
+        const pegboard = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.7, 0.05), woodMat)
+        pegboard.position.set(0, 1.35, -0.35)
+        benchGroup.add(pegboard)
+
+        benchGroup.position.set(6.5, 0, 4)
+        benchGroup.rotation.y = -Math.PI * 0.3
+        benchGroup.userData.clickable = true
+        benchGroup.userData.type = 'diyBench'
+
+        const hitSphere = new THREE.Mesh(
+            new THREE.SphereGeometry(1.3, 6, 6),
+            new THREE.MeshBasicMaterial({ visible: false })
+        )
+        hitSphere.position.y = 0.8
+        hitSphere.userData.clickable = true
+        hitSphere.userData.type = 'diyBench'
+        benchGroup.add(hitSphere)
+        this.diyBenchHitSphere = hitSphere
+
+        this.add(benchGroup)
+        this.diyBench = benchGroup
+    }
+
+    openDIY() {
+        if (document.getElementById('diyModal')) return
+
+        const inv = this.experience.world?.inventory
+        const modal = document.createElement('div')
+        modal.id = 'diyModal'
+        modal.style.cssText = `
+            position: fixed; inset: 0; z-index: 1200;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
+        `
+
+        const card = document.createElement('div')
+        card.style.cssText = `
+            width: 420px; max-width: calc(100vw - 40px); max-height: 80vh; overflow-y: auto;
+            background: #fffdf5; border-radius: 20px; padding: 24px;
+            font-family: 'Helvetica Neue', Arial, sans-serif; color: #4a3b2a;
+        `
+
+        const renderRows = () => {
+            return RECIPES.map((r) => {
+                const costText = Object.entries(r.cost)
+                    .map(([id, n]) => {
+                        const have = inv?.count(id) || 0
+                        const ok = have >= n
+                        return `<span style="color:${ok ? '#5a8c4a' : '#c44'}">${n}${({ wood: '🪵', stone: '🪨', flower: '🌸' })[id] || id}<small>(${have})</small></span>`
+                    })
+                    .join(' + ')
+                const canCraft = inv?.has(r.cost)
+                return `
+                    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px dashed #e8dcc8">
+                        <div style="font-size:30px">${r.icon}</div>
+                        <div style="flex:1">
+                            <div style="font-weight:600">${r.name}</div>
+                            <div style="font-size:13px">${costText}</div>
+                        </div>
+                        <button data-recipe="${r.id}" ${canCraft ? '' : 'disabled'}
+                            style="padding:8px 16px;border:none;border-radius:14px;cursor:${canCraft ? 'pointer' : 'not-allowed'};
+                                   background:${canCraft ? '#7ec850' : '#d8d0c0'};color:#fff;font-weight:600">
+                            制作
+                        </button>
+                    </div>
+                `
+            }).join('')
+        }
+
+        card.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <h3 style="margin:0;font-size:19px">🔨 DIY 工作台</h3>
+                <button id="diyClose" style="width:32px;height:32px;border:none;border-radius:50%;background:#f0e8d8;font-size:18px;cursor:pointer">×</button>
+            </div>
+            <div id="diyRows">${renderRows()}</div>
+        `
+        modal.appendChild(card)
+        document.body.appendChild(modal)
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal || e.target.id === 'diyClose') {
+                modal.remove()
+                return
+            }
+            const btn = e.target.closest('[data-recipe]')
+            if (btn && !btn.disabled) {
+                this.craft(btn.dataset.recipe)
+                card.querySelector('#diyRows').innerHTML = renderRows()
+            }
+        })
+    }
+
+    craft(recipeId) {
+        const recipe = RECIPES.find(r => r.id === recipeId)
+        const inv = this.experience.world?.inventory
+        if (!recipe || !inv) return
+
+        if (!inv.consume(recipe.cost)) {
+            this.showGameplayToast('🪵 材料不够，先去收集吧')
+            return
+        }
+
+        inv.add(recipe.id, 1)
+        this.showGameplayToast(`${recipe.icon} 做好了【${recipe.name}】！已放入背包`)
+        this.experience.world?.quests?.onCraft?.(recipe.id)
+    }
+
+    // ── Furniture placement ───────────────────────────────────────────
+    startPlacing(furnitureId) {
+        const world = this.experience.world
+        world.placingFurniture = furnitureId
+        this.showGameplayToast(`📍 点击地面，摆放【${RECIPES.find(r => r.id === furnitureId)?.name || '家具'}】（点背包取消）`)
+    }
+
+    confirmPlacement(point) {
+        const world = this.experience.world
+        const type = world.placingFurniture
+        if (!type) return
+
+        if (!world.inventory.remove(type, 1)) {
+            world.placingFurniture = null
+            return
+        }
+
+        const rotY = Math.random() * Math.PI * 2
+        this.placeFurnitureModel(type, point.x, point.z, rotY)
+        this.savePlacements()
+        world.placingFurniture = null
+        this.showGameplayToast(`✅ 摆好了！`)
+        this.experience.world?.quests?.onPlaceFurniture?.(type)
+    }
+
+    placeFurnitureModel(type, x, z, rotY = 0) {
+        const model = createFurnitureModel(type)
+        model.position.set(x, 0, z)
+        model.rotation.y = rotY
+        this.add(model)
+
+        this.placedFurniture = this.placedFurniture || []
+        this.placedFurniture.push({ type, x, z, rotY })
+        return model
+    }
+
+    savePlacements() {
+        savePlacements(this.placedFurniture || [])
+    }
+
+    restorePlacedFurniture() {
+        this.placedFurniture = []
+        const saved = loadPlacements()
+        saved.forEach(({ type, x, z, rotY }) => {
+            const model = createFurnitureModel(type)
+            model.position.set(x, 0, z)
+            model.rotation.y = rotY || 0
+            this.add(model)
+            this.placedFurniture.push({ type, x, z, rotY: rotY || 0 })
+        })
     }
 
     // ── Gameplay: apple picking & fishing ─────────────────────────────

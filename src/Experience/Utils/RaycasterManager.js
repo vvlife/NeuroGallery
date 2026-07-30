@@ -77,6 +77,17 @@ export default class RaycasterManager {
 
         this.raycaster.setFromCamera(this.mouse, this.camera.instance)
 
+        // Furniture placement mode: only the island ground matters
+        const world = this.experience.world
+        const currentScene = world?.sceneManager?.getCurrentScene()
+        if (world?.placingFurniture && currentScene?.groundMesh) {
+            const groundHits = this.raycaster.intersectObject(currentScene.groundMesh, false)
+            if (groundHits.length > 0) {
+                currentScene.confirmPlacement(groundHits[0].point)
+            }
+            return
+        }
+
         const candidates = this.collectCandidates()
         if (candidates.length === 0) return
 
@@ -140,6 +151,9 @@ export default class RaycasterManager {
                 break
             case 'groundItem':
                 scene?.pickGroundItem(nearest.hit.object.userData.itemRef)
+                break
+            case 'diyBench':
+                scene?.openDIY()
                 break
         }
     }
@@ -226,6 +240,11 @@ export default class RaycasterManager {
         if (scene && scene.vivyHitSphere && scene.vivyHitSphere.visible) {
             const hits = this.raycaster.intersectObject(scene.vivyHitSphere, false)
             hits.forEach(h => candidates.push({ kind: 'vivy', hit: h }))
+        }
+
+        if (scene && scene.diyBenchHitSphere && scene.diyBenchHitSphere.visible) {
+            const hits = this.raycaster.intersectObject(scene.diyBenchHitSphere, false)
+            hits.forEach(h => candidates.push({ kind: 'diyBench', hit: h }))
         }
 
         if (scene && scene.stardustHitSpheres && scene.stardustHitSpheres.length > 0) {
