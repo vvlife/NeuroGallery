@@ -76,6 +76,7 @@ export default class AnimalCrossingScene extends BaseScene {
         this.setShop()           // Nook's stall
         this.restorePlacedFurniture()
         this.setDayNight()       // day/night cycle
+        this.setSeasons()        // spring/winter switch
         this.setupGameplay()     // apple picking + fishing
 
         // Third-person island mode: visible character + follow camera
@@ -148,6 +149,7 @@ export default class AnimalCrossingScene extends BaseScene {
         ground.receiveShadow = true
         this.add(ground)
         this.groundMesh = ground
+        this.groundMaterial = groundMaterial
 
         // Plaza floor: packed-earth circle
         const plazaGeometry = new THREE.CircleGeometry(7, 32)
@@ -459,6 +461,7 @@ export default class AnimalCrossingScene extends BaseScene {
     setFruitTrees() {
         const trunkMaterial = new THREE.MeshStandardMaterial({ color: '#8b5a2b', roughness: 0.9 })
         const leafMaterial = new THREE.MeshStandardMaterial({ color: '#5cb85c', roughness: 0.8 })
+        this.leafMaterial = leafMaterial
         const fruitColors = ['#ff4d4d', '#ffa53d', '#ffb3c7'] // apple / orange / peach
 
         const spots = [
@@ -1393,6 +1396,102 @@ export default class AnimalCrossingScene extends BaseScene {
         })
     }
 
+    // ── Seasons: spring / winter switch ───────────────────────────────
+    setSeasons() {
+        this.season = 'spring'
+
+        // Season toggle button next to the clock
+        this.seasonBtn = document.createElement('button')
+        this.seasonBtn.id = 'seasonBtn'
+        this.seasonBtn.textContent = '🌸 春'
+        this.seasonBtn.style.cssText = `
+            position: fixed; top: 20px; left: calc(50% + 90px); z-index: 950;
+            padding: 8px 16px; border: none; border-radius: 20px;
+            background: rgba(255,255,255,0.92); color: #4a3b2a;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            backdrop-filter: blur(8px); box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        `
+        this.seasonBtn.addEventListener('click', () => {
+            this.applySeason(this.season === 'spring' ? 'winter' : 'spring')
+        })
+        document.body.appendChild(this.seasonBtn)
+
+        // Snowfall particles (hidden in spring)
+        const snowCount = 1200
+        const positions = new Float32Array(snowCount * 3)
+        this.snowVelocities = new Float32Array(snowCount)
+        for (let i = 0; i < snowCount; i++) {
+            const i3 = i * 3
+            positions[i3] = (Math.random() - 0.5) * 40
+            positions[i3 + 1] = Math.random() * 18
+            positions[i3 + 2] = (Math.random() - 0.5) * 40
+            this.snowVelocities[i] = 1 + Math.random() * 1.5
+        }
+        const snowGeo = new THREE.BufferGeometry()
+        snowGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+        this.snow = new THREE.Points(
+            snowGeo,
+            new THREE.PointsMaterial({ color: '#ffffff', size: 0.1, transparent: true, opacity: 0.9, sizeAttenuation: true })
+        )
+        this.snow.visible = false
+        this.add(this.snow)
+    }
+
+    applySeason(season) {
+        this.season = season
+        const isWinter = season === 'winter'
+
+        // Ground: green lawn vs snow field
+        if (this.groundMaterial) {
+            this.groundMaterial.color.set(isWinter ? '#eef4f8' : '#a8e088')
+            if (this.groundMaterial.map) {
+                this.groundMaterial.map = isWinter ? null : this.groundMaterial.map
+                this.groundMaterial.needsUpdate = true
+            }
+        }
+
+        // Canopies: green vs snow-capped
+        if (this.leafMaterial) {
+            this.leafMaterial.color.set(isWinter ? '#e8f0f5' : '#5cb85c')
+        }
+
+        // Flowers hide in winter
+        this.flowers.forEach(f => { f.visible = isWinter ? false : !f.userData.picked })
+
+        // Snowfall
+        if (this.snow) this.snow.visible = isWinter
+
+        // Pond freezes over
+        if (this.pondWater) {
+            this.pondWater.material.color.set(isWinter ? '#cfe8f5' : '#5fbef5')
+            this.pondWater.material.roughness = isWinter ? 0.6 : 0.15
+        }
+
+        if (this.seasonBtn) {
+            this.seasonBtn.textContent = isWinter ? '❄️ 冬' : '🌸 春'
+        }
+
+        this.showGameplayToast(isWinter ? '❄️ 冬天来了，小岛下雪了' : '🌸 春天来了，万物复苏')
+    }
+
+    updateSeason(delta) {
+        if (this.season !== 'winter' || !this.snow || !this.snow.visible) return
+
+        const positions = this.snow.geometry.attributes.position.array
+        for (let i = 0; i < positions.length / 3; i++) {
+            const i3 = i * 3
+            positions[i3 + 1] -= this.snowVelocities[i] * delta
+            positions[i3] += Math.sin(this.time.elapsed * 0.001 + i) * delta * 0.3
+            if (positions[i3 + 1] < 0) {
+                positions[i3 + 1] = 18
+                positions[i3] = (Math.random() - 0.5) * 40
+                positions[i3 + 2] = (Math.random() - 0.5) * 40
+            }
+        }
+        this.snow.geometry.attributes.position.needsUpdate = true
+    }
+
     // ── Day/night cycle: smooth lighting, night sky dome, clock UI ───
     setDayNight() {
         this.dayTime = 0.35            // 0..1; 0.25 dawn, 0.5 noon, 0.75 dusk
@@ -1528,6 +1627,10 @@ export default class AnimalCrossingScene extends BaseScene {
         if (this.clockEl) {
             this.clockEl.remove()
             this.clockEl = null
+        }
+        if (this.seasonBtn) {
+            this.seasonBtn.remove()
+            this.seasonBtn = null
         }
     }
 
@@ -2212,6 +2315,7 @@ export default class AnimalCrossingScene extends BaseScene {
 
         this.updateActionGuide(delta)
         this.updateDayNight(delta)
+        this.updateSeason(delta)
 
         // Clouds drift
         this.clouds.forEach((cloud) => {
