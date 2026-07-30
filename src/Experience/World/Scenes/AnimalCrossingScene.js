@@ -75,6 +75,7 @@ export default class AnimalCrossingScene extends BaseScene {
         this.setDIYBench()       // furniture crafting bench
         this.setShop()           // Nook's stall
         this.restorePlacedFurniture()
+        this.setDayNight()       // day/night cycle
         this.setupGameplay()     // apple picking + fishing
 
         // Third-person island mode: visible character + follow camera
@@ -1392,6 +1393,144 @@ export default class AnimalCrossingScene extends BaseScene {
         })
     }
 
+    // ── Day/night cycle: smooth lighting, night sky dome, clock UI ───
+    setDayNight() {
+        this.dayTime = 0.35            // 0..1; 0.25 dawn, 0.5 noon, 0.75 dusk
+        this.dayLength = 240           // seconds per full day
+
+        // Night veil: a big translucent dome that darkens the sky at night
+        this.nightVeil = new THREE.Mesh(
+            new THREE.SphereGeometry(85, 24, 16),
+            new THREE.MeshBasicMaterial({
+                color: '#0a1030',
+                side: THREE.BackSide,
+                transparent: true,
+                opacity: 0,
+                depthWrite: false,
+                fog: false
+            })
+        )
+        this.nightVeil.renderOrder = -1
+        this.add(this.nightVeil)
+
+        // Night stars
+        const starCount = 800
+        const positions = new Float32Array(starCount * 3)
+        for (let i = 0; i < starCount; i++) {
+            const i3 = i * 3
+            const radius = 70 + Math.random() * 10
+            const theta = Math.random() * Math.PI * 2
+            const phi = Math.acos(2 * Math.random() - 1)
+            positions[i3] = radius * Math.sin(phi) * Math.cos(theta)
+            positions[i3 + 1] = Math.abs(radius * Math.cos(phi)) * 0.9 + 5
+            positions[i3 + 2] = radius * Math.sin(phi) * Math.sin(theta)
+        }
+        const starGeo = new THREE.BufferGeometry()
+        starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+        this.nightStars = new THREE.Points(
+            starGeo,
+            new THREE.PointsMaterial({ color: '#ffffff', size: 0.25, transparent: true, opacity: 0, sizeAttenuation: true })
+        )
+        this.add(this.nightStars)
+
+        // Moon
+        this.moon = new THREE.Mesh(
+            new THREE.SphereGeometry(2.5, 16, 16),
+            new THREE.MeshBasicMaterial({ color: '#f5f3ce', fog: false, transparent: true, opacity: 0 })
+        )
+        this.moon.position.set(-30, 30, -20)
+        this.add(this.moon)
+
+        // Clock UI
+        this.clockEl = document.createElement('div')
+        this.clockEl.id = 'dayNightClock'
+        this.clockEl.style.cssText = `
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 900; padding: 8px 18px; border-radius: 20px;
+            background: rgba(255,255,255,0.88); color: #4a3b2a;
+            font-size: 14px; font-weight: 600; backdrop-filter: blur(8px);
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.12); pointer-events: none;
+        `
+        document.body.appendChild(this.clockEl)
+    }
+
+    // Lighting keyframes: [time, sunI, sunColor, fillI, ambI, ambColor, veil, stars]
+    getDayNightState(t) {
+        const keys = [
+            { t: 0.00, sun: 0.22, sunC: 0x8fa8ff, fill: 0.10, amb: 0.38, ambC: 0x2a3a6e, veil: 0.72, stars: 1 },
+            { t: 0.20, sun: 0.22, sunC: 0x8fa8ff, fill: 0.10, amb: 0.38, ambC: 0x2a3a6e, veil: 0.72, stars: 1 },
+            { t: 0.28, sun: 0.80, sunC: 0xffc890, fill: 0.30, amb: 0.75, ambC: 0xffd9b0, veil: 0.15, stars: 0 },
+            { t: 0.40, sun: 1.40, sunC: 0xffedcc, fill: 0.50, amb: 1.20, ambC: 0xfff8e7, veil: 0.00, stars: 0 },
+            { t: 0.65, sun: 1.40, sunC: 0xffedcc, fill: 0.50, amb: 1.20, ambC: 0xfff8e7, veil: 0.00, stars: 0 },
+            { t: 0.76, sun: 0.75, sunC: 0xff9a5c, fill: 0.30, amb: 0.65, ambC: 0xff9a6a, veil: 0.22, stars: 0.1 },
+            { t: 0.86, sun: 0.22, sunC: 0x8fa8ff, fill: 0.10, amb: 0.38, ambC: 0x2a3a6e, veil: 0.72, stars: 1 },
+            { t: 1.00, sun: 0.22, sunC: 0x8fa8ff, fill: 0.10, amb: 0.38, ambC: 0x2a3a6e, veil: 0.72, stars: 1 }
+        ]
+
+        let a = keys[0], b = keys[keys.length - 1]
+        for (let i = 0; i < keys.length - 1; i++) {
+            if (t >= keys[i].t && t <= keys[i + 1].t) {
+                a = keys[i]
+                b = keys[i + 1]
+                break
+            }
+        }
+        const f = (t - a.t) / Math.max(0.0001, b.t - a.t)
+
+        const lerpColor = (c1, c2) => {
+            const col1 = new THREE.Color(c1), col2 = new THREE.Color(c2)
+            return col1.lerp(col2, f)
+        }
+
+        return {
+            sunI: a.sun + (b.sun - a.sun) * f,
+            sunC: lerpColor(a.sunC, b.sunC),
+            fillI: a.fill + (b.fill - a.fill) * f,
+            ambI: a.amb + (b.amb - a.amb) * f,
+            ambC: lerpColor(a.ambC, b.ambC),
+            veil: a.veil + (b.veil - a.veil) * f,
+            stars: a.stars + (b.stars - a.stars) * f
+        }
+    }
+
+    updateDayNight(delta) {
+        this.dayTime = (this.dayTime + delta / this.dayLength) % 1
+
+        const state = this.getDayNightState(this.dayTime)
+        const env = this.experience.world?.environment
+        if (env) {
+            env.sunLight.intensity = state.sunI
+            env.sunLight.color.copy(state.sunC)
+            // Sun swings across the sky
+            const sunAngle = (this.dayTime - 0.25) * Math.PI * 2
+            env.sunLight.position.set(Math.cos(sunAngle) * 12, Math.max(2, Math.sin(sunAngle) * 14), 5)
+            env.fillLight.intensity = state.fillI
+            env.ambientLight.intensity = state.ambI
+            env.ambientLight.color.copy(state.ambC)
+        }
+
+        if (this.nightVeil) this.nightVeil.material.opacity = state.veil
+        if (this.nightStars) this.nightStars.material.opacity = state.stars * 0.9
+        if (this.moon) this.moon.material.opacity = state.stars
+
+        // Clock UI: t=0 → 00:00, t=0.25 → 06:00, t=0.5 → 12:00, t=0.75 → 18:00
+        if (this.clockEl) {
+            const totalMinutes = this.dayTime * 24 * 60
+            const hours = Math.floor(totalMinutes / 60)
+            const minutes = Math.floor(totalMinutes % 60)
+            const icon = hours >= 6 && hours < 17 ? '☀️' : hours >= 17 && hours < 19.5 ? '🌇' : '🌙'
+            this.clockEl.textContent = `${icon} ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+        }
+    }
+
+    destroyDayNight() {
+        if (this.clockEl) {
+            this.clockEl.remove()
+            this.clockEl = null
+        }
+    }
+
     // ── Gameplay: apple picking & fishing ─────────────────────────────
     setupGameplay() {
         // Show the collect HUD while this scene is active
@@ -1660,6 +1799,8 @@ export default class AnimalCrossingScene extends BaseScene {
         if (this.experience.world?.player) {
             this.experience.world.player.exit()
         }
+
+        this.destroyDayNight()
 
         // Hide backpack
         if (this.experience.world?.inventory) {
@@ -2070,6 +2211,7 @@ export default class AnimalCrossingScene extends BaseScene {
         const now = this.time.elapsed
 
         this.updateActionGuide(delta)
+        this.updateDayNight(delta)
 
         // Clouds drift
         this.clouds.forEach((cloud) => {
