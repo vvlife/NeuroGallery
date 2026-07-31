@@ -65,4 +65,26 @@ export default [
         type: 'rgbeTexture',
         path: '/textures/animalcrossing/sky.hdr'
     },
+
+    // Character clothing / fur textures (CC0, Poly Haven)
+    {
+        name: 'acPlaid',
+        type: 'texture',
+        path: '/textures/animalcrossing/fabric_pattern_07.jpg'
+    },
+    {
+        name: 'acDenim',
+        type: 'texture',
+        path: '/textures/animalcrossing/denim_fabric.jpg'
+    },
+    {
+        name: 'acCotton',
+        type: 'texture',
+        path: '/textures/animalcrossing/cotton_jersey.jpg'
+    },
+    {
+        name: 'acFur',
+        type: 'texture',
+        path: '/textures/animalcrossing/curly_teddy.jpg'
+    },
 ]

@@ -847,8 +847,19 @@ export default class AnimalCrossingScene extends BaseScene {
 
     createVillager(spec) {
         const villager = new THREE.Group()
-        const bodyMaterial = new THREE.MeshStandardMaterial({ color: spec.color, roughness: 0.85 })
-        const bellyMaterial = new THREE.MeshStandardMaterial({ color: spec.belly, roughness: 0.85 })
+
+        // Fur texture (CC0, Poly Haven) as bump + roughness so each species
+        // keeps its color but gains a plush surface instead of flat plastic.
+        const furTex = this.resources.items.acFur || null
+        if (furTex) {
+            furTex.wrapS = THREE.RepeatWrapping
+            furTex.wrapT = THREE.RepeatWrapping
+            furTex.repeat.set(2, 2)
+        }
+        const furMaps = furTex ? { bumpMap: furTex, bumpScale: 0.6, roughnessMap: furTex } : {}
+
+        const bodyMaterial = new THREE.MeshStandardMaterial({ color: spec.color, roughness: 0.95, ...furMaps })
+        const bellyMaterial = new THREE.MeshStandardMaterial({ color: spec.belly, roughness: 0.95, ...furMaps })
 
         // Egg-shaped body (the shared AC silhouette)
         const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 12), bodyMaterial)
@@ -2264,7 +2275,7 @@ export default class AnimalCrossingScene extends BaseScene {
 
     // ── Vivy: the island's special resident ──────────────────────────
     setVivy() {
-        this.vivy = createVivy()
+        this.vivy = createVivy({ dressTexture: this.resources.items.acCotton || null })
         this.vivy.position.set(3, 0, -4)
 
         this.vivy.userData.walk = {

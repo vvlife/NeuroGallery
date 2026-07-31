@@ -1,18 +1,31 @@
 import * as THREE from 'three'
+import { makeVivyFaceTexture } from './CharacterTextures.js'
 
 /**
  * Vivy — the island's special resident, from *Vivy: Fluorite Eye's Song*.
  * Teal long hair, white dress, an AI songstress living among the animals.
+ * `options.dressTexture` — optional CC0 fabric texture for the dress.
  */
-export function createVivy() {
+export function createVivy(options = {}) {
     const vivy = new THREE.Group()
     vivy.name = 'vivy'
 
+    const dressTex = options.dressTexture || null
+    if (dressTex) {
+        dressTex.wrapS = THREE.RepeatWrapping
+        dressTex.wrapT = THREE.RepeatWrapping
+        dressTex.repeat.set(3, 3)
+        dressTex.colorSpace = THREE.SRGBColorSpace
+    }
+
     const skinMat = new THREE.MeshStandardMaterial({ color: '#ffe3d0', roughness: 0.75 })
-    const dressMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.85 })
+    const dressMat = new THREE.MeshStandardMaterial({
+        color: '#ffffff',
+        map: dressTex,
+        roughness: 0.95
+    })
     const hairMat = new THREE.MeshStandardMaterial({ color: '#3fd4c1', roughness: 0.7 })
     const hairDarkMat = new THREE.MeshStandardMaterial({ color: '#2ba89a', roughness: 0.7 })
-    const eyeMat = new THREE.MeshBasicMaterial({ color: '#c4406a' }) // Vivy's pink eyes
 
     // Dress (flowing cone)
     const dress = new THREE.Mesh(new THREE.ConeGeometry(0.42, 1.0, 14), dressMat)
@@ -26,8 +39,12 @@ export function createVivy() {
     torso.position.y = 1.05
     vivy.add(torso)
 
-    // Head
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 14), skinMat)
+    // Head — canvas face texture (pink anime eyes / blush / smile)
+    const faceMat = new THREE.MeshStandardMaterial({
+        map: makeVivyFaceTexture('#ffe3d0'),
+        roughness: 0.75
+    })
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 24), faceMat)
     head.position.y = 1.52
     head.castShadow = true
     vivy.add(head)
@@ -57,19 +74,6 @@ export function createVivy() {
     ahoge.position.set(0.05, 1.92, 0)
     ahoge.rotation.z = -0.25
     vivy.add(ahoge)
-
-    // Pink eyes + tiny smile
-    for (const side of [-1, 1]) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), eyeMat)
-        eye.scale.set(1, 1.3, 0.6)
-        eye.position.set(side * 0.11, 1.54, 0.27)
-        vivy.add(eye)
-    }
-    const smileMat = new THREE.MeshBasicMaterial({ color: '#d4897a' })
-    const smile = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), smileMat)
-    smile.scale.set(1.4, 0.5, 0.5)
-    smile.position.set(0, 1.44, 0.28)
-    vivy.add(smile)
 
     // Arms
     const arms = []

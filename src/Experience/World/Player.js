@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import Experience from '../Experience.js'
+import { makePlayerFaceTexture } from './CharacterTextures.js'
 
 /**
  * Third-person player character for the island (Animal Crossing scene).
@@ -39,6 +40,8 @@ export default class Player {
 
         // Touch joystick state
         this.joystick = { active: false, id: null, baseX: 0, baseY: 0, dx: 0, dy: 0 }
+        // Touch camera-look state (drag anywhere outside the joystick)
+        this.lookTouch = { active: false, id: null, lastX: 0, lastY: 0 }
         this._touchBound = false
 
         this.createModel()
@@ -49,9 +52,34 @@ export default class Player {
         this.group = new THREE.Group()
         this.group.name = 'player'
 
+        // Clothing textures (CC0, Poly Haven) — loaded through Resources
+        const items = this.experience.resources?.items || {}
+        const plaidTex = items.acPlaid
+        if (plaidTex) {
+            plaidTex.wrapS = THREE.RepeatWrapping
+            plaidTex.wrapT = THREE.RepeatWrapping
+            plaidTex.repeat.set(2, 2)
+            plaidTex.colorSpace = THREE.SRGBColorSpace
+        }
+        const denimTex = items.acDenim
+        if (denimTex) {
+            denimTex.wrapS = THREE.RepeatWrapping
+            denimTex.wrapT = THREE.RepeatWrapping
+            denimTex.repeat.set(1.5, 1.5)
+            denimTex.colorSpace = THREE.SRGBColorSpace
+        }
+
         const skinMat = new THREE.MeshStandardMaterial({ color: '#ffd9b3', roughness: 0.8 })
-        const shirtMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.85 })
-        const pantsMat = new THREE.MeshStandardMaterial({ color: '#4d94e8', roughness: 0.85 })
+        const shirtMat = new THREE.MeshStandardMaterial({
+            color: plaidTex ? '#ffffff' : '#ffffff',
+            map: plaidTex || null,
+            roughness: 0.9
+        })
+        const pantsMat = new THREE.MeshStandardMaterial({
+            color: denimTex ? '#9db8dd' : '#4d94e8',
+            map: denimTex || null,
+            roughness: 0.9
+        })
         const hairMat = new THREE.MeshStandardMaterial({ color: '#6b4a2b', roughness: 0.9 })
         const shoeMat = new THREE.MeshStandardMaterial({ color: '#e8574d', roughness: 0.8 })
 
@@ -68,8 +96,12 @@ export default class Player {
         pants.position.y = 0.42
         this.group.add(pants)
 
-        // Head
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.36, 14, 14), skinMat)
+        // Head — canvas face texture (eyes / blush / smile) instead of geometry
+        const faceMat = new THREE.MeshStandardMaterial({
+            map: makePlayerFaceTexture('#ffd9b3'),
+            roughness: 0.8
+        })
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.36, 24, 24), faceMat)
         head.position.y = 1.32
         head.castShadow = true
         this.group.add(head)
@@ -85,22 +117,6 @@ export default class Player {
         const bun = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), hairMat)
         bun.position.set(0, 1.62, -0.22)
         this.group.add(bun)
-
-        // Eyes
-        const eyeMat = new THREE.MeshBasicMaterial({ color: '#2b2b2b' })
-        for (const side of [-1, 1]) {
-            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), eyeMat)
-            eye.position.set(side * 0.13, 1.34, 0.33)
-            this.group.add(eye)
-        }
-        // Blush
-        const blushMat = new THREE.MeshBasicMaterial({ color: '#ffb3b3', transparent: true, opacity: 0.7 })
-        for (const side of [-1, 1]) {
-            const blush = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 6), blushMat)
-            blush.scale.set(1, 0.5, 0.5)
-            blush.position.set(side * 0.22, 1.27, 0.3)
-            this.group.add(blush)
-        }
 
         // Arms
         this.arms = []
@@ -290,6 +306,58 @@ export default class Player {
         this.joystickBase.addEventListener('touchmove', this._onTouchMove, { passive: false })
         this.joystickBase.addEventListener('touchend', this._onTouchEnd)
         this.joystickBase.addEventListener('touchcancel', this._onTouchEnd)
+
+        // Camera look: drag on the canvas (anywhere outside joystick / UI)
+        const canvas = this.experience.canvas
+        this._onLookStart = (e) => {
+            for (const t of e.changedTouches) {
+                if (this.lookTouch.active) break
+                this.lookTouch.active = true
+                this.lookTouch.id = t.identifier
+                this.lookTouch.lastX = t.clientX
+                this.lookTouch.lastY = t.clientY
+                this.lookTouch.moved = 0
+            }
+        }
+        this._onLookMove = (e) => {
+            if (!this.lookTouch.active) return
+            for (const t of e.changedTouches) {
+                if (t.identifier !== this.lookTouch.id) continue
+                const dx = t.clientX - this.lookTouch.lastX
+                const dy = t.clientY - this.lookTouch.lastY
+                this.lookTouch.lastX = t.clientX
+                this.lookTouch.lastY = t.clientY
+                this.lookTouch.moved += Math.abs(dx) + Math.abs(dy)
+                this.camYaw -= dx * 0.006
+                this.camPitch = Math.max(0.12, Math.min(1.1, this.camPitch + dy * 0.006))
+                e.preventDefault()
+            }
+        }
+        this._onLookEnd = (e) => {
+            for (const t of e.changedTouches) {
+                if (t.identifier === this.lookTouch.id) {
+                    // Dragged to orbit the camera → swallow the tap "click"
+                    // so it doesn't trigger painting/NPC interactions.
+                    if (this.lookTouch.moved > 12) {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        const swallow = (ev) => {
+                            ev.stopPropagation()
+                            ev.preventDefault()
+                        }
+                        window.addEventListener('click', swallow, { capture: true, once: true })
+                        setTimeout(() => window.removeEventListener('click', swallow, { capture: true }), 350)
+                    }
+                    this.lookTouch.active = false
+                }
+            }
+        }
+        if (canvas) {
+            canvas.addEventListener('touchstart', this._onLookStart, { passive: true })
+            canvas.addEventListener('touchmove', this._onLookMove, { passive: false })
+            canvas.addEventListener('touchend', this._onLookEnd)
+            canvas.addEventListener('touchcancel', this._onLookEnd)
+        }
     }
 
     unbindTouch() {
@@ -299,6 +367,15 @@ export default class Player {
         this.joystickBase.removeEventListener('touchmove', this._onTouchMove)
         this.joystickBase.removeEventListener('touchend', this._onTouchEnd)
         this.joystickBase.removeEventListener('touchcancel', this._onTouchEnd)
+
+        const canvas = this.experience.canvas
+        if (canvas && this._onLookStart) {
+            canvas.removeEventListener('touchstart', this._onLookStart)
+            canvas.removeEventListener('touchmove', this._onLookMove)
+            canvas.removeEventListener('touchend', this._onLookEnd)
+            canvas.removeEventListener('touchcancel', this._onLookEnd)
+        }
+        this.lookTouch.active = false
     }
 
     update() {
