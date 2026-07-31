@@ -158,6 +158,18 @@ export default class RaycasterManager {
             case 'shop':
                 scene?.openShop()
                 break
+            case 'swing':
+                scene?.onSwingClick()
+                break
+            case 'iceCreamCart':
+                scene?.onIceCreamClick()
+                break
+            case 'vendingMachine':
+                scene?.onVendingClick()
+                break
+            case 'waterBus':
+                scene?.onBoatClick()
+                break
         }
     }
 
@@ -289,6 +301,12 @@ export default class RaycasterManager {
             })
             const hits = this.raycaster.intersectObjects(available, false)
             hits.forEach(h => candidates.push({ kind: 'groundItem', hit: h }))
+        }
+
+        // Coastal-zone interactables (swing / ice-cream cart / vending / water bus)
+        if (scene && scene.miscHitSpheres && scene.miscHitSpheres.length > 0) {
+            const hits = this.raycaster.intersectObjects(scene.miscHitSpheres, false)
+            hits.forEach(h => candidates.push({ kind: h.object.userData.type, hit: h }))
         }
 
         return candidates

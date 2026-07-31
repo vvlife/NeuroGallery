@@ -31,6 +31,8 @@ export default class Player {
         this.boundary = 11.3
 
         this.active = false
+        this.frozen = false             // externally driven (swing / boat ride)
+        this._lastWalk = new THREE.Vector3(0, 0, 6)
         this.walkPhase = 0
         this.keys = { forward: false, backward: false, left: false, right: false, jump: false, sprint: false }
 
@@ -383,6 +385,14 @@ export default class Player {
 
         const delta = this.experience.time.delta / 1000
 
+        // Frozen: position is driven externally (swing / boat ride)
+        if (this.frozen) {
+            this.group.position.copy(this.position)
+            this.group.rotation.y = this.facing
+            this.followCamera(delta)
+            return
+        }
+
         // Input direction (keyboard or joystick), in camera space
         let ix = 0, iz = 0
         if (this.keys.forward) iz -= 1
@@ -425,12 +435,23 @@ export default class Player {
             this.walkPhase *= 1 - Math.min(1, delta * 8)
         }
 
-        // Boundary + gravity
-        this.position.x = Math.max(-this.boundary, Math.min(this.boundary, this.position.x))
-        this.position.z = Math.max(-this.boundary, Math.min(this.boundary, this.position.z))
+        // Walkable area: scene-defined when available (island + pier + dock),
+        // otherwise the plain square boundary
+        const scene = this.experience.world?.sceneManager?.getCurrentScene?.()
+        if (scene && typeof scene.isWalkable === 'function') {
+            if (scene.isWalkable(this.position.x, this.position.z)) {
+                this._lastWalk.set(this.position.x, 0, this.position.z)
+            } else {
+                this.position.x = this._lastWalk.x
+                this.position.z = this._lastWalk.z
+            }
+        } else {
+            this.position.x = Math.max(-this.boundary, Math.min(this.boundary, this.position.x))
+            this.position.z = Math.max(-this.boundary, Math.min(this.boundary, this.position.z))
+        }
 
         // Obstacle collision (fountain, trees, stands, pond, houses...)
-        const obstacles = this.experience.world?.sceneManager?.getCurrentScene?.()?.getObstacles?.() || []
+        const obstacles = scene?.getObstacles?.() || []
         const playerRadius = 0.38
         for (const obs of obstacles) {
             const dx = this.position.x - obs.x
@@ -471,7 +492,11 @@ export default class Player {
         }
         this.group.position.y = this.position.y + (moving ? Math.abs(Math.sin(this.walkPhase)) * 0.04 : 0)
 
-        // Follow camera with a touch of smoothing
+        this.followCamera(delta)
+    }
+
+    // Follow camera with a touch of smoothing
+    followCamera(delta) {
         const cam = this.camera.instance
         const offset = new THREE.Vector3(
             Math.sin(this.camYaw) * Math.cos(this.camPitch),

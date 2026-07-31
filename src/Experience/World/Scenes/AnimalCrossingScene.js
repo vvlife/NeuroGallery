@@ -52,6 +52,11 @@ export default class AnimalCrossingScene extends BaseScene {
         this.fishingBobber = null
         this.caughtFishSprite = null
         this._fishingTimeout = null
+
+        // New coastal zones (cabin pier / swing / dock)
+        this.miscHitSpheres = []
+        this.swing = null              // { group, seat, boost, sitting }
+        this.boat = null               // { group, riding, t, from, path }
     }
 
     setup() {
@@ -74,6 +79,10 @@ export default class AnimalCrossingScene extends BaseScene {
         this.setGroundItems()    // scattered wood / stone / shells
         this.setDIYBench()       // furniture crafting bench
         this.setShop()           // Nook's stall
+        this.setSeaAndCliffs()   // ocean around the island + edge cliffs
+        this.setEastCabin()      // beach cabin + wooden pier (east)
+        this.setWestSwing()      // cherry-tree swing + ice-cream cart + flower field (west)
+        this.setSouthDock()      // vending machine + ferry shelter + water bus (south)
         this.restorePlacedFurniture()
         this.setDayNight()       // day/night cycle
         this.setSeasons()        // spring/winter switch
@@ -137,10 +146,21 @@ export default class AnimalCrossingScene extends BaseScene {
         }
 
         const positions = groundGeometry.attributes.position
+        // Sandy zones need flat ground — damp the grass waves to zero there.
+        // Plane +y maps to world −z after the rotation below.
+        const flatZones = [[22, 0, 8], [-21.5, 1, 8], [3, 23, 8]]
         for (let i = 0; i < positions.count; i++) {
             const x = positions.getX(i)
             const y = positions.getY(i)
-            positions.setZ(i, Math.sin(x * 0.3) * Math.cos(y * 0.3) * 0.15)
+            let wave = Math.sin(x * 0.3) * Math.cos(y * 0.3) * 0.15
+            for (const [cx, cz, r] of flatZones) {
+                const dist = Math.hypot(x - cx, y + cz)
+                if (dist < r) {
+                    const blend = Math.min(1, Math.max(0, (dist - (r - 2.5)) / 2.5))
+                    wave *= blend
+                }
+            }
+            positions.setZ(i, wave)
         }
         groundGeometry.computeVertexNormals()
 
@@ -972,6 +992,14 @@ export default class AnimalCrossingScene extends BaseScene {
             [-14, -16], [0, -19], [14, -16], [-20, 6], [20, 6]
         ]
         houses.forEach(([x, z]) => obstacles.push({ x, z, r: 2.6 }))
+        // Coastal zone structures
+        obstacles.push(
+            { x: 24.5, z: -1, r: 2.5 },    // beach cabin
+            { x: -23, z: -1, r: 0.9 },     // swing cherry tree
+            { x: -17.5, z: 4, r: 1.2 },    // ice-cream cart
+            { x: 1.5, z: 23.5, r: 0.9 },   // vending machine
+            { x: 5.4, z: 26.3, r: 1.1 },   // ferry shelter
+        )
         return obstacles
     }
 
@@ -1407,6 +1435,620 @@ export default class AnimalCrossingScene extends BaseScene {
         })
     }
 
+    // ── Sea + island edge cliffs ──────────────────────────────────────
+    setSeaAndCliffs() {
+        // Ocean plane below the island
+        const sea = new THREE.Mesh(
+            new THREE.PlaneGeometry(220, 220),
+            new THREE.MeshStandardMaterial({ color: '#35b6c9', roughness: 0.35, metalness: 0.05, transparent: true, opacity: 0.96 })
+        )
+        sea.rotation.x = -Math.PI / 2
+        sea.position.y = -0.32
+        this.add(sea)
+        this.sea = sea
+
+        // Foam ring hugging the island edge
+        const foam = new THREE.Mesh(
+            new THREE.RingGeometry(30.2, 31.8, 64),
+            new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.45, side: THREE.DoubleSide })
+        )
+        foam.rotation.x = -Math.PI / 2
+        foam.position.y = -0.28
+        this.add(foam)
+        this.seaFoam = foam
+
+        // Cliff walls around the island slab (notched where pier & dock cross)
+        const cliffMat = new THREE.MeshStandardMaterial({ color: '#caa06b', roughness: 0.95 })
+        const mkWall = (w, h, d, x, y, z) => {
+            const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), cliffMat)
+            m.position.set(x, y, z)
+            this.add(m)
+        }
+        mkWall(0.7, 1.6, 60, -29.95, -0.5, 0)            // west
+        mkWall(60, 1.6, 0.7, 0, -0.5, -29.95)            // north
+        mkWall(0.7, 1.6, 28.2, 29.95, -0.5, -15.9)       // east, north of pier notch
+        mkWall(0.7, 1.6, 28.2, 29.95, -0.5, 15.9)        // east, south of pier notch
+        mkWall(31.2, 1.6, 0.7, -14.4, -0.5, 29.95)       // south, west of dock notch
+        mkWall(24.8, 1.6, 0.7, 17.6, -0.5, 29.95)        // south, east of dock notch
+    }
+
+    addSandPatch(cx, cz, r) {
+        const sand = new THREE.Mesh(
+            new THREE.CircleGeometry(r, 40),
+            new THREE.MeshStandardMaterial({ color: '#f2d9a0', roughness: 0.95 })
+        )
+        sand.rotation.x = -Math.PI / 2
+        sand.position.set(cx, 0.045, cz)
+        sand.receiveShadow = true
+        this.add(sand)
+
+        const rim = new THREE.Mesh(
+            new THREE.RingGeometry(r - 0.6, r, 40),
+            new THREE.MeshStandardMaterial({ color: '#e4c48c', roughness: 0.95 })
+        )
+        rim.rotation.x = -Math.PI / 2
+        rim.position.set(cx, 0.04, cz)
+        this.add(rim)
+    }
+
+    addCherryTree(x, z, s = 1) {
+        const g = new THREE.Group()
+        const trunkMat = new THREE.MeshStandardMaterial({ color: '#7a3b3b', roughness: 0.9 })
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2 * s, 0.3 * s, 2.4 * s, 8), trunkMat)
+        trunk.position.y = 1.2 * s
+        trunk.castShadow = true
+        g.add(trunk)
+
+        const canopyMat = new THREE.MeshStandardMaterial({ color: '#f2a0c4', roughness: 0.85 })
+        const canopyDark = new THREE.MeshStandardMaterial({ color: '#e88ab2', roughness: 0.85 })
+        const blobs = [
+            [0, 2.9, 0, 1.5], [0.9, 2.5, 0.4, 1.0], [-0.9, 2.5, -0.3, 1.05], [0.2, 2.4, -0.8, 0.9]
+        ]
+        blobs.forEach(([bx, by, bz, br], i) => {
+            const blob = new THREE.Mesh(new THREE.SphereGeometry(br * s, 12, 10), i % 2 ? canopyDark : canopyMat)
+            blob.scale.set(1, 0.75, 1)
+            blob.position.set(bx * s, by * s, bz * s)
+            blob.castShadow = true
+            g.add(blob)
+        })
+
+        // Hanging wisteria-style flower strings
+        const stringMat = new THREE.MeshStandardMaterial({ color: '#c98ad6', roughness: 0.8 })
+        for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI * 2
+            const sx = Math.cos(angle) * 1.1 * s
+            const sz = Math.sin(angle) * 1.1 * s
+            for (let j = 0; j < 3; j++) {
+                const bead = new THREE.Mesh(new THREE.SphereGeometry(0.07 * s, 6, 6), stringMat)
+                bead.scale.set(1, 1.6, 1)
+                bead.position.set(sx, (2.3 - j * 0.22) * s, sz)
+                g.add(bead)
+            }
+        }
+
+        g.position.set(x, 0, z)
+        this.add(g)
+        return g
+    }
+
+    addPine(x, z, s = 1) {
+        const g = new THREE.Group()
+        const trunk = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.12 * s, 0.16 * s, 0.8 * s, 6),
+            new THREE.MeshStandardMaterial({ color: '#7a5230', roughness: 0.9 })
+        )
+        trunk.position.y = 0.4 * s
+        g.add(trunk)
+        const leafMat = new THREE.MeshStandardMaterial({ color: '#3e8e5a', roughness: 0.9 })
+        for (let i = 0; i < 3; i++) {
+            const cone = new THREE.Mesh(new THREE.ConeGeometry((0.9 - i * 0.22) * s, 0.9 * s, 8), leafMat)
+            cone.position.y = (1.0 + i * 0.55) * s
+            cone.castShadow = true
+            g.add(cone)
+        }
+        g.position.set(x, 0, z)
+        this.add(g)
+        this.trees.push(g) // sway + collision come for free
+        return g
+    }
+
+    addPierLamps(xs, zs, positions) {
+        const postMat = new THREE.MeshStandardMaterial({ color: '#6b4a2b', roughness: 0.9 })
+        const bulbMat = new THREE.MeshBasicMaterial({ color: '#ffe9a8' })
+        positions.forEach(([px, pz]) => {
+            const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.9, 6), postMat)
+            post.position.set(px, 0.45, pz)
+            this.add(post)
+            const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), bulbMat)
+            bulb.position.set(px, 0.95, pz)
+            this.add(bulb)
+        })
+    }
+
+    addDeckPlanks(cx, cz, w, d) {
+        const deckMat = new THREE.MeshStandardMaterial({ color: '#c98d54', roughness: 0.9 })
+        const gapMat = new THREE.MeshStandardMaterial({ color: '#a06a3c', roughness: 0.9 })
+        const deck = new THREE.Mesh(new THREE.BoxGeometry(w, 0.06, d), deckMat)
+        deck.position.set(cx, 0.0, cz)
+        deck.receiveShadow = true
+        this.add(deck)
+        // Slat grooves
+        const alongX = w > d
+        const span = alongX ? w : d
+        const count = Math.floor(span / 0.55)
+        for (let i = 1; i < count; i++) {
+            const off = -span / 2 + i * (span / count)
+            const groove = new THREE.Mesh(
+                new THREE.BoxGeometry(alongX ? 0.04 : w, 0.065, alongX ? d : 0.04),
+                gapMat
+            )
+            groove.position.set(cx + (alongX ? off : 0), 0.001, cz + (alongX ? 0 : off))
+            this.add(groove)
+        }
+    }
+
+    makeSignTexture(text) {
+        const canvas = document.createElement('canvas')
+        canvas.width = 256
+        canvas.height = 160
+        const ctx = canvas.getContext('2d')
+        ctx.fillStyle = '#fffdf8'
+        ctx.fillRect(0, 0, 256, 160)
+        ctx.strokeStyle = '#6d9c8b'
+        ctx.lineWidth = 10
+        ctx.strokeRect(8, 8, 240, 144)
+        ctx.fillStyle = '#3f3a32'
+        ctx.font = 'bold 52px "Helvetica Neue", Arial, sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(text, 128, 84)
+        const texture = new THREE.CanvasTexture(canvas)
+        texture.colorSpace = THREE.SRGBColorSpace
+        return texture
+    }
+
+    // ── East zone: beach cabin + pier ─────────────────────────────────
+    setEastCabin() {
+        this.addSandPatch(22, 0, 6.8)
+
+        const woodMat = new THREE.MeshStandardMaterial({ color: '#8a5a34', roughness: 0.85 })
+        const darkWood = new THREE.MeshStandardMaterial({ color: '#5a3a22', roughness: 0.9 })
+        const glassMat = new THREE.MeshStandardMaterial({ color: '#bfe8f0', roughness: 0.1, metalness: 0.1, transparent: true, opacity: 0.35 })
+        const cabin = new THREE.Group()
+
+        // Stilts
+        for (const [sx, sz] of [[-1.4, -1.1], [0, -1.1], [1.4, -1.1], [-1.4, 1.1], [0, 1.1], [1.4, 1.1]]) {
+            const post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 1.8, 8), darkWood)
+            post.position.set(sx, 0.9, sz)
+            cabin.add(post)
+        }
+        // Platform
+        const platform = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.14, 2.8), woodMat)
+        platform.position.y = 1.8
+        platform.castShadow = true
+        cabin.add(platform)
+        // Glass walls + frames
+        const wallSpecs = [
+            [3.4, 1.4, 0.06, 0, 2.55, -1.4],   // back
+            [0.06, 1.4, 2.8, -1.7, 2.55, 0],   // left
+            [0.06, 1.4, 2.8, 1.7, 2.55, 0]     // right
+        ]
+        wallSpecs.forEach(([w, h, d, x, y, z]) => {
+            const glass = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), glassMat)
+            glass.position.set(x, y, z)
+            cabin.add(glass)
+            const frame = new THREE.Mesh(new THREE.BoxGeometry(w + 0.06, 0.08, d + 0.06), darkWood)
+            frame.position.set(x, y + h / 2, z)
+            cabin.add(frame)
+        })
+        // Front railing (open side faces the island, -x)
+        for (let i = 0; i < 4; i++) {
+            const rail = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.5, 0.05), darkWood)
+            rail.position.set(-1.65, 2.1, -1.2 + i * 0.8)
+            cabin.add(rail)
+        }
+        const railTop = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 2.6), darkWood)
+        railTop.position.set(-1.65, 2.36, 0)
+        cabin.add(railTop)
+        // Interior: table + stool + bed
+        const table = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.08, 0.5), woodMat)
+        table.position.set(0.6, 2.25, -0.6)
+        cabin.add(table)
+        const tableLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.35, 6), darkWood)
+        tableLeg.position.set(0.6, 2.05, -0.6)
+        cabin.add(tableLeg)
+        const stool = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.3, 8), woodMat)
+        stool.position.set(0.6, 2.0, 0.1)
+        cabin.add(stool)
+        const bed = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.25, 1.6), new THREE.MeshStandardMaterial({ color: '#f4e8d8', roughness: 0.9 }))
+        bed.position.set(1.0, 2.0, 0.6)
+        cabin.add(bed)
+        // Roof with overhang + vines
+        const roof = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.12, 3.4), darkWood)
+        roof.position.y = 3.35
+        roof.castShadow = true
+        cabin.add(roof)
+        const vineMat = new THREE.MeshStandardMaterial({ color: '#5a9e4a', roughness: 0.9 })
+        for (let i = 0; i < 7; i++) {
+            const vine = new THREE.Mesh(new THREE.SphereGeometry(0.14, 6, 6), vineMat)
+            vine.scale.set(1.4, 0.7, 1.4)
+            vine.position.set(-1.8 + i * 0.6, 3.45, (i % 2 ? 1.5 : -1.5))
+            cabin.add(vine)
+        }
+        // Stairs down to the sand
+        for (let i = 0; i < 4; i++) {
+            const step = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.1, 0.4), woodMat)
+            step.position.set(-2.1 - i * 0.42, 1.45 - i * 0.42, 0)
+            cabin.add(step)
+        }
+
+        cabin.position.set(24.5, 0, -1)
+        this.add(cabin)
+        this.cabin = cabin
+
+        // Cherry trees + rocks around the sand
+        this.addCherryTree(18.5, -4.5, 0.85)
+        this.addCherryTree(20, 4.5, 0.75)
+        const rockMat = new THREE.MeshStandardMaterial({ color: '#b8a898', roughness: 0.95 })
+        for (const [rx, rz, rs] of [[26.5, 3.5, 0.4], [17, 2, 0.3], [25, -5, 0.35]]) {
+            const rock = new THREE.Mesh(new THREE.SphereGeometry(rs, 7, 6), rockMat)
+            rock.scale.set(1.3, 0.7, 1)
+            rock.position.set(rx, rs * 0.4, rz)
+            this.add(rock)
+        }
+
+        // Wooden pier heading east into the sea
+        this.addDeckPlanks(30.9, 0, 5.2, 2.6)
+        this.addPierLamps(null, null, [[29.2, -1.15], [31.4, -1.15], [33.2, -1.15], [29.2, 1.15], [31.4, 1.15], [33.2, 1.15]])
+    }
+
+    // ── West zone: cherry-tree swing + ice-cream cart + flower field ──
+    setWestSwing() {
+        this.addSandPatch(-21.5, 1, 6.8)
+
+        // Big cherry tree with a branch reaching east
+        const tree = this.addCherryTree(-23, -1, 1.5)
+        const branchMat = new THREE.MeshStandardMaterial({ color: '#7a3b3b', roughness: 0.9 })
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 2.2, 6), branchMat)
+        branch.rotation.z = Math.PI / 2.4
+        branch.position.set(1.2, 2.9, 0)
+        tree.add(branch)
+
+        // Swing hanging from the branch end
+        const swingGroup = new THREE.Group()
+        const ropeMat = new THREE.MeshStandardMaterial({ color: '#d8cbb0', roughness: 0.9 })
+        for (const side of [-1, 1]) {
+            const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.5, 4), ropeMat)
+            rope.position.set(side * 0.22, -0.75, 0)
+            swingGroup.add(rope)
+        }
+        const seat = new THREE.Mesh(
+            new THREE.BoxGeometry(0.55, 0.05, 0.24),
+            new THREE.MeshStandardMaterial({ color: '#a0683c', roughness: 0.85 })
+        )
+        seat.position.set(0, -1.5, 0)
+        seat.castShadow = true
+        swingGroup.add(seat)
+        swingGroup.position.set(-21.6, 2.9, -1)
+        this.add(swingGroup)
+
+        const swingHit = new THREE.Mesh(
+            new THREE.SphereGeometry(0.9, 6, 6),
+            new THREE.MeshBasicMaterial({ visible: false })
+        )
+        swingHit.position.set(0, -1.4, 0)
+        swingHit.userData.clickable = true
+        swingHit.userData.type = 'swing'
+        swingGroup.add(swingHit)
+        this.miscHitSpheres.push(swingHit)
+        this.swing = { group: swingGroup, seat, boost: 0, sitting: false }
+
+        // Flower field — dense, decorative (non-interactive)
+        const stemMat = new THREE.MeshStandardMaterial({ color: '#4d8a4a', roughness: 0.9 })
+        const headColors = ['#f4a7c3', '#b48ad6', '#ffffff', '#f7d154', '#f2a0c4']
+        const headMats = headColors.map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 }))
+        for (let i = 0; i < 70; i++) {
+            const fx = -26.5 + Math.random() * 10
+            const fz = -4.5 + Math.random() * 11
+            if (Math.hypot(fx - (-23), fz - (-1)) < 1.8) continue      // tree
+            if (Math.hypot(fx - (-17.5), fz - 4) < 1.8) continue       // cart
+            const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.3, 4), stemMat)
+            stem.position.set(fx, 0.19, fz)
+            this.add(stem)
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.075, 6, 6), headMats[i % headMats.length])
+            head.position.set(fx, 0.36, fz)
+            this.add(head)
+        }
+
+        // Ice-cream cart
+        const cart = new THREE.Group()
+        const creamMat = new THREE.MeshStandardMaterial({ color: '#fff3e0', roughness: 0.85 })
+        const pinkMat = new THREE.MeshStandardMaterial({ color: '#f7c8d8', roughness: 0.85 })
+        const body = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.85, 0.75), creamMat)
+        body.position.y = 0.58
+        body.castShadow = true
+        cart.add(body)
+        const counter = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.06, 0.85), pinkMat)
+        counter.position.y = 1.03
+        cart.add(counter)
+        for (const side of [-1, 1]) {
+            const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.08, 12), new THREE.MeshStandardMaterial({ color: '#6b4a2b', roughness: 0.9 }))
+            wheel.rotation.x = Math.PI / 2
+            wheel.position.set(side * 0.5, 0.22, 0.42)
+            cart.add(wheel)
+            const post = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.85, 6), new THREE.MeshStandardMaterial({ color: '#a0683c', roughness: 0.85 }))
+            post.position.set(side * 0.62, 1.45, -0.3)
+            cart.add(post)
+        }
+        const canopy = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.07, 1.05), pinkMat)
+        canopy.position.y = 1.9
+        cart.add(canopy)
+        // Flower garland along the canopy edge
+        const garlandColors = ['#f4a7c3', '#ffffff', '#f7d154']
+        for (let i = 0; i < 7; i++) {
+            const g = new THREE.Mesh(
+                new THREE.SphereGeometry(0.07, 6, 6),
+                new THREE.MeshStandardMaterial({ color: garlandColors[i % 3], roughness: 0.8 })
+            )
+            g.position.set(-0.7 + i * 0.235, 1.84, 0.52)
+            cart.add(g)
+        }
+        // Two cones on the counter
+        for (const [cx, scoop] of [[-0.35, '#f4a7c3'], [0.15, '#fffdf8']]) {
+            const cone = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.16, 8), new THREE.MeshStandardMaterial({ color: '#d9a45c', roughness: 0.9 }))
+            cone.position.set(cx, 1.14, 0)
+            cart.add(cone)
+            const ball = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 8), new THREE.MeshStandardMaterial({ color: scoop, roughness: 0.7 }))
+            ball.position.set(cx, 1.26, 0)
+            cart.add(ball)
+        }
+        cart.position.set(-17.5, 0, 4)
+        cart.rotation.y = -Math.PI / 2
+        this.add(cart)
+
+        const cartHit = new THREE.Mesh(
+            new THREE.SphereGeometry(1.2, 6, 6),
+            new THREE.MeshBasicMaterial({ visible: false })
+        )
+        cartHit.position.y = 0.9
+        cartHit.userData.clickable = true
+        cartHit.userData.type = 'iceCreamCart'
+        cart.add(cartHit)
+        this.miscHitSpheres.push(cartHit)
+    }
+
+    // ── South zone: vending machine + ferry shelter + water bus ───────
+    setSouthDock() {
+        this.addSandPatch(3, 23, 6.8)
+
+        this.addPine(-1.5, 20.5, 1)
+        this.addPine(7, 22, 0.85)
+
+        // Vending machine (faces the plaza, −z)
+        const vm = new THREE.Group()
+        const vmBody = new THREE.Mesh(new THREE.BoxGeometry(0.95, 1.9, 0.7), new THREE.MeshStandardMaterial({ color: '#d43a2f', roughness: 0.6 }))
+        vmBody.position.y = 0.95
+        vmBody.castShadow = true
+        vm.add(vmBody)
+        const panel = new THREE.Mesh(new THREE.BoxGeometry(0.75, 1.45, 0.05), new THREE.MeshStandardMaterial({ color: '#7a1f18', roughness: 0.5 }))
+        panel.position.set(0, 1.0, -0.34)
+        vm.add(panel)
+        const canColors = ['#ffdd55', '#88ccff', '#ff8888', '#aaddaa']
+        for (let row = 0; row < 2; row++) {
+            for (let col = 0; col < 4; col++) {
+                const can = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.05, 0.05, 0.14, 8),
+                    new THREE.MeshStandardMaterial({ color: canColors[col], roughness: 0.4, metalness: 0.3 })
+                )
+                can.position.set(-0.24 + col * 0.16, 1.35 - row * 0.35, -0.38)
+                vm.add(can)
+            }
+        }
+        const slot = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.18, 0.03), new THREE.MeshStandardMaterial({ color: '#222222' }))
+        slot.position.set(0.28, 0.55, -0.36)
+        vm.add(slot)
+        const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.28, 0.72), new THREE.MeshStandardMaterial({ color: '#fffdf8', roughness: 0.7 }))
+        stripe.position.y = 1.72
+        vm.add(stripe)
+        vm.position.set(1.5, 0, 23.5)
+        this.add(vm)
+
+        const vmHit = new THREE.Mesh(
+            new THREE.SphereGeometry(0.95, 6, 6),
+            new THREE.MeshBasicMaterial({ visible: false })
+        )
+        vmHit.position.y = 1.0
+        vmHit.userData.clickable = true
+        vmHit.userData.type = 'vendingMachine'
+        vm.add(vmHit)
+        this.miscHitSpheres.push(vmHit)
+
+        // Ferry shelter with a sign
+        const shelter = new THREE.Group()
+        const postMat = new THREE.MeshStandardMaterial({ color: '#4a3a28', roughness: 0.9 })
+        for (const side of [-1, 1]) {
+            const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 2.1, 8), postMat)
+            post.position.set(side * 0.95, 1.05, 0.4)
+            shelter.add(post)
+        }
+        const roof = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.08, 1.5), new THREE.MeshStandardMaterial({ color: '#3f5a50', roughness: 0.85 }))
+        roof.position.set(0, 2.15, 0.15)
+        roof.rotation.x = 0.06
+        roof.castShadow = true
+        shelter.add(roof)
+        const sign = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.9, 0.56),
+            new THREE.MeshBasicMaterial({ map: this.makeSignTexture('渡船口'), side: THREE.DoubleSide })
+        )
+        sign.position.set(0, 1.65, 0.38)
+        sign.rotation.y = Math.PI
+        shelter.add(sign)
+        const benchSeat = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.08, 0.4), new THREE.MeshStandardMaterial({ color: '#a0683c', roughness: 0.85 }))
+        benchSeat.position.set(0, 0.5, 0.35)
+        shelter.add(benchSeat)
+        shelter.position.set(5.4, 0, 26.3)
+        this.add(shelter)
+
+        // Dock deck heading south into the sea
+        this.addDeckPlanks(3.2, 31.2, 2.6, 5.2)
+        this.addPierLamps(null, null, [[1.9, 29.5], [1.9, 31.7], [1.9, 33.5], [4.5, 29.5], [4.5, 31.7], [4.5, 33.5]])
+
+        // Water bus
+        const boat = new THREE.Group()
+        const hullMat = new THREE.MeshStandardMaterial({ color: '#2f4f4a', roughness: 0.7 })
+        const hull = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.55, 3.4), hullMat)
+        hull.castShadow = true
+        boat.add(hull)
+        const boatStripe = new THREE.Mesh(new THREE.BoxGeometry(1.74, 0.1, 3.44), new THREE.MeshStandardMaterial({ color: '#e8c84d', roughness: 0.6 }))
+        boatStripe.position.y = 0.2
+        boat.add(boatStripe)
+        const cabinBox = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.85, 1.7), new THREE.MeshStandardMaterial({ color: '#f2ead8', roughness: 0.85 }))
+        cabinBox.position.set(0, 0.72, -0.35)
+        cabinBox.castShadow = true
+        boat.add(cabinBox)
+        for (const side of [-1, 1]) {
+            const win = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.35, 1.2), new THREE.MeshStandardMaterial({ color: '#33454d', roughness: 0.3 }))
+            win.position.set(side * 0.63, 0.8, -0.35)
+            boat.add(win)
+        }
+        const boatRoof = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.08, 2.0), hullMat)
+        boatRoof.position.set(0, 1.18, -0.35)
+        boat.add(boatRoof)
+        const chimney = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.4, 8), new THREE.MeshStandardMaterial({ color: '#444444', roughness: 0.7 }))
+        chimney.position.set(0, 1.35, -0.9)
+        boat.add(chimney)
+
+        const boatHit = new THREE.Mesh(
+            new THREE.SphereGeometry(1.7, 6, 6),
+            new THREE.MeshBasicMaterial({ visible: false })
+        )
+        boatHit.position.y = 0.5
+        boatHit.userData.clickable = true
+        boatHit.userData.type = 'waterBus'
+        boat.add(boatHit)
+        this.miscHitSpheres.push(boatHit)
+
+        boat.position.set(3.2, -0.05, 35.9)
+        this.add(boat)
+        this.boat = { group: boat, riding: false, t: 0 }
+    }
+
+    // ── New-zone interactions ─────────────────────────────────────────
+    onSwingClick() {
+        const player = this.experience.world?.player
+        if (!player || !this.swing) return
+        if (!this.swing.sitting) {
+            this.swing.sitting = true
+            this.swing.boost = 1
+            player.frozen = true
+            player.facing = Math.PI / 2
+            this.showGameplayToast('🌸 荡起秋千啦～再点一次秋千跳下来')
+        } else {
+            this.swing.sitting = false
+            player.frozen = false
+            player.position.set(-20.2, 0, 0.5)
+            player.velY = 0
+            this.showGameplayToast('🌸 从秋千上跳下来了')
+        }
+    }
+
+    onIceCreamClick() {
+        const inv = this.experience.world?.inventory
+        if (!inv) return
+        if (inv.spendBells(50)) {
+            this.showGameplayToast('🍦 买到了草莓冰淇淋！-50 铃钱，好甜～')
+            this.experience.world?.quests?.onBuy?.('icecream')
+        } else {
+            this.showGameplayToast('🍦 草莓冰淇淋 50 铃钱一个，钱不够哦')
+        }
+    }
+
+    onVendingClick() {
+        const inv = this.experience.world?.inventory
+        if (!inv) return
+        if (inv.spendBells(30)) {
+            this.showGameplayToast('🥤 咕咚咕咚…买了瓶汽水！-30 铃钱')
+            this.experience.world?.quests?.onBuy?.('soda')
+        } else {
+            this.showGameplayToast('🥤 汽水 30 铃钱一瓶，钱不够哦')
+        }
+    }
+
+    onBoatClick() {
+        const player = this.experience.world?.player
+        if (!player || !this.boat || this.boat.riding) return
+        this.boat.riding = true
+        this.boat.t = 0
+        player.frozen = true
+        player.position.set(3.2, 0.35, 35.2)
+        this.showGameplayToast('🚤 水上巴士出发！绕小岛一圈～')
+    }
+
+    updateNewZones(delta, now) {
+        const player = this.experience.world?.player
+
+        // Swing sway + seated player follows the seat
+        if (this.swing) {
+            this.swing.boost *= 1 - Math.min(1, delta * 0.35)
+            const amp = this.swing.sitting ? 0.5 : 0.06 + this.swing.boost * 0.3
+            this.swing.group.rotation.x = Math.sin(now * 0.0013) * amp
+            if (this.swing.sitting && player) {
+                const v = new THREE.Vector3()
+                this.swing.seat.getWorldPosition(v)
+                player.position.set(v.x, v.y - 0.02, v.z)
+            }
+        }
+
+        // Water bus idle bob / ride loop
+        if (this.boat) {
+            const b = this.boat
+            if (b.riding && player) {
+                b.t += delta
+                const path = [[3.2, 35.9], [12, 40], [22, 36], [14, 31.8], [3.2, 35.9]]
+                const total = 16
+                if (b.t >= total) {
+                    b.riding = false
+                    player.frozen = false
+                    player.position.set(3.2, 0, 32.6)
+                    player.velY = 0
+                    b.group.position.set(3.2, -0.05, 35.9)
+                    b.group.rotation.set(0, 0, 0)
+                    this.showGameplayToast('🚤 回到码头啦，欢迎下次乘坐！')
+                } else {
+                    const seg = (b.t / total) * (path.length - 1)
+                    const i = Math.min(path.length - 2, Math.floor(seg))
+                    const f = seg - i
+                    const sf = f * f * (3 - 2 * f)
+                    const x = path[i][0] + (path[i + 1][0] - path[i][0]) * sf
+                    const z = path[i][1] + (path[i + 1][1] - path[i][1]) * sf
+                    const hx = path[i + 1][0] - path[i][0]
+                    const hz = path[i + 1][1] - path[i][1]
+                    b.group.position.set(x, -0.05 + Math.sin(now * 0.002) * 0.04, z)
+                    if (Math.hypot(hx, hz) > 0.01) b.group.rotation.y = Math.atan2(hx, hz)
+                    player.position.set(x, 0.35, z)
+                    player.facing = b.group.rotation.y
+                }
+            } else {
+                b.group.position.y = -0.05 + Math.sin(now * 0.0015) * 0.05
+                b.group.rotation.z = Math.sin(now * 0.001) * 0.02
+            }
+        }
+
+        // Foam ring gentle pulse
+        if (this.seaFoam) {
+            const s = 1 + Math.sin(now * 0.0008) * 0.012
+            this.seaFoam.scale.set(s, s, 1)
+        }
+    }
+
+    // Walkable area: island slab + east pier + south dock corridors
+    isWalkable(x, z) {
+        if (Math.abs(x) <= 29 && Math.abs(z) <= 29) return true
+        if (x >= 28.5 && x <= 33.6 && Math.abs(z) <= 1.5) return true    // east pier
+        if (x >= 1.6 && x <= 4.8 && z >= 28.5 && z <= 33.8) return true  // south dock
+        return false
+    }
+
     // ── Seasons: spring / winter switch ───────────────────────────────
     setSeasons() {
         this.season = 'spring'
@@ -1721,6 +2363,7 @@ export default class AnimalCrossingScene extends BaseScene {
         `
         legend.innerHTML = `
             <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6d9c8b;margin-right:4px"></span>商店/DIY</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#8a6db8;margin-right:4px"></span>小屋/秋千/码头</span>
             <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#5aa4c9;margin-right:4px"></span>喷泉/池塘</span>
             <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#c9665c;margin-right:4px"></span>我的位置</span>
             <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#b08d4a;margin-right:4px"></span>画架</span>
@@ -1756,26 +2399,42 @@ export default class AnimalCrossingScene extends BaseScene {
         const half = mapS / 2
         const cx = pad + half
         const cy = pad + half
-        const worldR = 12
+        const worldR = 34
         const scale = half / worldR
 
         const worldToMap = (x, z) => ({ x: cx + x * scale, y: cy + z * scale })
 
-        // Background already cream via CSS; clear anyway
-        ctx.clearRect(0, 0, S, S)
+        // Sea background
+        ctx.fillStyle = '#bfe6ee'
+        ctx.fillRect(0, 0, S, S)
 
-        // Grass / island base
+        // Grass / island base (island slab is ±29)
+        const islR = 29 * scale
         ctx.fillStyle = '#e8f0d8'
         ctx.beginPath()
-        ctx.roundRect(cx - half + 4, cy - half + 4, mapS - 8, mapS - 8, 18)
+        ctx.roundRect(cx - islR, cy - islR, islR * 2, islR * 2, 14)
         ctx.fill()
+
+        // Sand patches for the three coastal zones
+        ctx.fillStyle = '#f2d9a0'
+        for (const [sx, sz, sr] of [[22, 0, 6.8], [-21.5, 1, 6.8], [3, 23, 6.8]]) {
+            const p = worldToMap(sx, sz)
+            ctx.beginPath()
+            ctx.arc(p.x, p.y, sr * scale, 0, Math.PI * 2)
+            ctx.fill()
+        }
+        // Pier & dock decks
+        ctx.fillStyle = '#c98d54'
+        const pier = worldToMap(30.9, 0)
+        ctx.fillRect(pier.x - 2.6 * scale, pier.y - 1.3 * scale, 5.2 * scale, 2.6 * scale)
+        const dock = worldToMap(3.2, 31.2)
+        ctx.fillRect(dock.x - 1.3 * scale, dock.y - 2.6 * scale, 2.6 * scale, 5.2 * scale)
 
         // Paths (sand)
         ctx.strokeStyle = '#eaddc5'
-        ctx.lineWidth = 14
+        ctx.lineWidth = 10
         ctx.lineCap = 'round'
         ctx.beginPath()
-        // Main cross + ring
         ctx.moveTo(...Object.values(worldToMap(0, -11)))
         ctx.lineTo(...Object.values(worldToMap(0, 11)))
         ctx.moveTo(...Object.values(worldToMap(-11, 0)))
@@ -1785,7 +2444,7 @@ export default class AnimalCrossingScene extends BaseScene {
         const pond = worldToMap(-8.5, -7)
         ctx.fillStyle = '#a8d8e8'
         ctx.beginPath()
-        ctx.ellipse(pond.x, pond.y, 34, 26, 0, 0, Math.PI * 2)
+        ctx.ellipse(pond.x, pond.y, 3.1 * scale, 2.4 * scale, 0, 0, Math.PI * 2)
         ctx.fill()
 
         // Helper for markers
@@ -1793,16 +2452,16 @@ export default class AnimalCrossingScene extends BaseScene {
             const p = worldToMap(x, z)
             ctx.fillStyle = color
             ctx.beginPath()
-            ctx.arc(p.x, p.y, 7, 0, Math.PI * 2)
+            ctx.arc(p.x, p.y, 6, 0, Math.PI * 2)
             ctx.fill()
             ctx.strokeStyle = '#fffdf8'
             ctx.lineWidth = 2
             ctx.stroke()
             if (label) {
                 ctx.fillStyle = '#3f3a32'
-                ctx.font = '12px "Helvetica Neue", Arial, sans-serif'
+                ctx.font = '11px "Helvetica Neue", Arial, sans-serif'
                 ctx.textAlign = 'center'
-                ctx.fillText(icon + label, p.x, p.y + 19)
+                ctx.fillText(icon + label, p.x, p.y + 17)
             }
         }
 
@@ -1811,6 +2470,13 @@ export default class AnimalCrossingScene extends BaseScene {
         marker(4.5, 2.5, '#8a8378', '布告板', '📋')
         marker(-5.5, 6.5, '#6d9c8b', '商店', '🏪')
         marker(6.5, 4, '#6d9c8b', 'DIY', '🔨')
+
+        // Coastal zones
+        marker(24.5, -1, '#8a6db8', '小屋', '🏡')
+        marker(-22, 0, '#8a6db8', '秋千', '🌸')
+        marker(3.2, 31.5, '#8a6db8', '码头', '🚤')
+        marker(1.5, 23.5, '#8a6db8', '', '🥤')
+        marker(-17.5, 4, '#8a6db8', '', '🍦')
 
         // Easels / painting stands
         const stands = [[-6, -6], [0, -8], [6, -6], [-6, 6], [0, 8], [6, 6]]
@@ -1821,7 +2487,7 @@ export default class AnimalCrossingScene extends BaseScene {
             const p = worldToMap(tree.position.x, tree.position.z)
             ctx.fillStyle = '#8bc46c'
             ctx.beginPath()
-            ctx.arc(p.x, p.y, 5, 0, Math.PI * 2)
+            ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2)
             ctx.fill()
         })
 
@@ -1830,11 +2496,11 @@ export default class AnimalCrossingScene extends BaseScene {
             const p = worldToMap(h.position.x, h.position.z)
             ctx.fillStyle = '#f4c89c'
             ctx.beginPath()
-            ctx.roundRect(p.x - 10, p.y - 8, 20, 16, 4)
+            ctx.roundRect(p.x - 8, p.y - 6, 16, 12, 3)
             ctx.fill()
             ctx.fillStyle = '#e07a8a'
             ctx.beginPath()
-            ctx.arc(p.x, p.y - 8, 10, Math.PI, 0)
+            ctx.arc(p.x, p.y - 6, 8, Math.PI, 0)
             ctx.fill()
         })
 
@@ -1844,7 +2510,7 @@ export default class AnimalCrossingScene extends BaseScene {
             const p = worldToMap(player.position.x, player.position.z)
             ctx.fillStyle = '#c9665c'
             ctx.beginPath()
-            ctx.arc(p.x, p.y, 8, 0, Math.PI * 2)
+            ctx.arc(p.x, p.y, 7, 0, Math.PI * 2)
             ctx.fill()
             ctx.strokeStyle = '#fffdf8'
             ctx.lineWidth = 3
@@ -2545,6 +3211,7 @@ export default class AnimalCrossingScene extends BaseScene {
         this.updateActionGuide(delta)
         this.updateDayNight(delta)
         this.updateSeason(delta)
+        this.updateNewZones(delta, now)
 
         // Refresh map if open (player marker moves)
         if (this.mapModal) {
