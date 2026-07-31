@@ -155,7 +155,7 @@ export default class Quests {
         this.button.style.cssText = `
             position: fixed; bottom: 24px; left: 130px; z-index: 1000;
             padding: 12px 20px; border: none; border-radius: 24px;
-            background: rgba(255,255,255,0.94); color: #4a3b2a;
+            background: rgba(255,255,255,0.94); color: #3f3a32;
             font-size: 15px; font-weight: 600; cursor: pointer;
             box-shadow: 0 4px 16px rgba(0,0,0,0.15); backdrop-filter: blur(8px);
             font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -169,10 +169,10 @@ export default class Quests {
         this.panel.style.cssText = `
             position: fixed; bottom: 84px; left: 24px; z-index: 1100;
             width: 340px; max-width: calc(100vw - 48px);
-            background: #fffdf5; border-radius: 18px;
+            background: #fffdf8; border-radius: 18px;
             box-shadow: 0 16px 48px rgba(0,0,0,0.25);
             padding: 18px; display: none;
-            font-family: 'Helvetica Neue', Arial, sans-serif; color: #4a3b2a;
+            font-family: 'Helvetica Neue', Arial, sans-serif; color: #3f3a32;
         `
         document.body.appendChild(this.panel)
 
@@ -219,14 +219,14 @@ export default class Quests {
         if (!this.panel) return
         const rows = this.quests.map(q => {
             const state = q.done
-                ? '<span style="color:#5a8c4a;font-weight:700">✓ 完成</span>'
-                : `<span style="color:#8b7355">${q.progress}/${q.target}</span>`
+                ? '<span style="color:#5f9276;font-weight:700">✓ 完成</span>'
+                : `<span style="color:#8a8378">${q.progress}/${q.target}</span>`
             return `
-                <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed #e8dcc8;${q.done ? 'opacity:0.65' : ''}">
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed #e5dfd2;${q.done ? 'opacity:0.65' : ''}">
                     <span style="font-size:22px">${q.icon}</span>
                     <div style="flex:1">
                         <div style="font-weight:600">${q.name}</div>
-                        <div style="font-size:12px;color:#8b7355">${q.desc} · 奖励 💰${q.reward}</div>
+                        <div style="font-size:12px;color:#8a8378">${q.desc} · 奖励 💰${q.reward}</div>
                     </div>
                     ${state}
                 </div>

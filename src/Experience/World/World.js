@@ -93,9 +93,9 @@ export default class World {
         toast.style.cssText = `
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             z-index: 1300; padding: 28px 44px; border-radius: 24px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, #6d9c8b, #6d9c8b);
             color: #fff; font-size: 22px; font-weight: 600; text-align: center;
-            box-shadow: 0 20px 60px rgba(102, 126, 234, 0.5);
+            box-shadow: 0 20px 60px rgba(109, 156, 139, 0.45);
             font-family: 'Helvetica Neue', Arial, sans-serif;
             animation: exhibitCelebrate 4s ease forwards;
             pointer-events: none; white-space: nowrap;

@@ -558,7 +558,7 @@ export default class AnimalCrossingScene extends BaseScene {
     }
 
     setFlowers() {
-        const colors = ['#ff6b9d', '#c44dff', '#4dc9ff', '#ffdf4d', '#ff8c42', '#ffffff']
+        const colors = ['#ff6b9d', '#c9665cdff', '#4dc9ff', '#ffdf4d', '#ff8c42', '#ffffff']
 
         for (let i = 0; i < 50; i++) {
             const flower = new THREE.Group()
@@ -1118,8 +1118,8 @@ export default class AnimalCrossingScene extends BaseScene {
         const card = document.createElement('div')
         card.style.cssText = `
             width: 420px; max-width: calc(100vw - 40px); max-height: 80vh; overflow-y: auto;
-            background: #fffdf5; border-radius: 20px; padding: 24px;
-            font-family: 'Helvetica Neue', Arial, sans-serif; color: #4a3b2a;
+            background: #fffdf8; border-radius: 20px; padding: 24px;
+            font-family: 'Helvetica Neue', Arial, sans-serif; color: #3f3a32;
         `
 
         const renderRows = () => {
@@ -1128,12 +1128,12 @@ export default class AnimalCrossingScene extends BaseScene {
                     .map(([id, n]) => {
                         const have = inv?.count(id) || 0
                         const ok = have >= n
-                        return `<span style="color:${ok ? '#5a8c4a' : '#c44'}">${n}${({ wood: '🪵', stone: '🪨', flower: '🌸' })[id] || id}<small>(${have})</small></span>`
+                        return `<span style="color:${ok ? '#5f9276' : '#c9665c'}">${n}${({ wood: '🪵', stone: '🪨', flower: '🌸' })[id] || id}<small>(${have})</small></span>`
                     })
                     .join(' + ')
                 const canCraft = inv?.has(r.cost)
                 return `
-                    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px dashed #e8dcc8">
+                    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px dashed #e5dfd2">
                         <div style="font-size:30px">${r.icon}</div>
                         <div style="flex:1">
                             <div style="font-weight:600">${r.name}</div>
@@ -1141,7 +1141,7 @@ export default class AnimalCrossingScene extends BaseScene {
                         </div>
                         <button data-recipe="${r.id}" ${canCraft ? '' : 'disabled'}
                             style="padding:8px 16px;border:none;border-radius:14px;cursor:${canCraft ? 'pointer' : 'not-allowed'};
-                                   background:${canCraft ? '#7ec850' : '#d8d0c0'};color:#fff;font-weight:600">
+                                   background:${canCraft ? '#6d9c8b' : '#d8d0c0'};color:#fff;font-weight:600">
                             制作
                         </button>
                     </div>
@@ -1152,7 +1152,7 @@ export default class AnimalCrossingScene extends BaseScene {
         card.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
                 <h3 style="margin:0;font-size:19px">🔨 DIY 工作台</h3>
-                <button id="diyClose" style="width:32px;height:32px;border:none;border-radius:50%;background:#f0e8d8;font-size:18px;cursor:pointer">×</button>
+                <button id="diyClose" style="width:32px;height:32px;border:none;border-radius:50%;background:#f1ede2;font-size:18px;cursor:pointer">×</button>
             </div>
             <div id="diyRows">${renderRows()}</div>
         `
@@ -1323,8 +1323,8 @@ export default class AnimalCrossingScene extends BaseScene {
         const card = document.createElement('div')
         card.style.cssText = `
             width: 460px; max-width: calc(100vw - 40px); max-height: 82vh; overflow-y: auto;
-            background: #fffdf5; border-radius: 20px; padding: 24px;
-            font-family: 'Helvetica Neue', Arial, sans-serif; color: #4a3b2a;
+            background: #fffdf8; border-radius: 20px; padding: 24px;
+            font-family: 'Helvetica Neue', Arial, sans-serif; color: #3f3a32;
         `
 
         const render = () => {
@@ -1332,31 +1332,31 @@ export default class AnimalCrossingScene extends BaseScene {
             const buyRows = BUY_LIST.map(item => {
                 const afford = bells >= item.price
                 return `
-                    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed #e8dcc8">
+                    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed #e5dfd2">
                         <span style="font-size:24px">${item.icon}</span>
                         <span style="flex:1">${item.name}</span>
-                        <span style="color:#b8860b;font-weight:600">💰${item.price}</span>
+                        <span style="color:#b08d4a;font-weight:600">💰${item.price}</span>
                         <button data-buy="${item.id}" ${afford ? '' : 'disabled'}
                             style="padding:6px 14px;border:none;border-radius:12px;cursor:${afford ? 'pointer' : 'not-allowed'};
-                                   background:${afford ? '#7ec850' : '#d8d0c0'};color:#fff;font-weight:600">买</button>
+                                   background:${afford ? '#6d9c8b' : '#d8d0c0'};color:#fff;font-weight:600">买</button>
                     </div>
                 `
             }).join('')
 
             const sellable = Object.entries(inv?.items || {}).filter(([id]) => SELL_PRICES[id])
             const sellRows = sellable.length === 0
-                ? '<div style="text-align:center;color:#a89880;font-size:13px;padding:14px 0">背包里没有可以卖的东西</div>'
+                ? '<div style="text-align:center;color:#a39c8e;font-size:13px;padding:14px 0">背包里没有可以卖的东西</div>'
                 : sellable.map(([id, n]) => {
                     const def = { apple: '🍎', flower: '🌸', fish: '🐟', butterfly: '🦋', fossil: '🦴', ore: '✨', shell: '🐚' }[id] || '❔'
                     const names = { apple: '水果', flower: '野花', fish: '鱼', butterfly: '蝴蝶', fossil: '化石', ore: '矿石', shell: '贝壳' }
                     return `
-                        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed #e8dcc8">
+                        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed #e5dfd2">
                             <span style="font-size:24px">${def}</span>
                             <span style="flex:1">${names[id] || id} ×${n}</span>
-                            <span style="color:#b8860b;font-weight:600">💰${SELL_PRICES[id]}/个</span>
+                            <span style="color:#b08d4a;font-weight:600">💰${SELL_PRICES[id]}/个</span>
                             <button data-sell="${id}"
                                 style="padding:6px 14px;border:none;border-radius:12px;cursor:pointer;
-                                       background:#e8a54d;color:#fff;font-weight:600">卖 1 个</button>
+                                       background:#c9665c;color:#fff;font-weight:600">卖 1 个</button>
                         </div>
                     `
                 }).join('')
@@ -1364,12 +1364,12 @@ export default class AnimalCrossingScene extends BaseScene {
             return `
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
                     <h3 style="margin:0;font-size:19px">🏪 狸克商店</h3>
-                    <span style="font-weight:700;color:#b8860b">💰 ${bells}</span>
-                    <button id="shopClose" style="width:32px;height:32px;border:none;border-radius:50%;background:#f0e8d8;font-size:18px;cursor:pointer">×</button>
+                    <span style="font-weight:700;color:#b08d4a">💰 ${bells}</span>
+                    <button id="shopClose" style="width:32px;height:32px;border:none;border-radius:50%;background:#f1ede2;font-size:18px;cursor:pointer">×</button>
                 </div>
-                <div style="font-weight:700;margin:14px 0 4px;color:#6b8c4a">🛒 购买</div>
+                <div style="font-weight:700;margin:14px 0 4px;color:#5f9276">🛒 购买</div>
                 ${buyRows}
-                <div style="font-weight:700;margin:16px 0 4px;color:#b8860b">💰 出售</div>
+                <div style="font-weight:700;margin:16px 0 4px;color:#b08d4a">💰 出售</div>
                 ${sellRows}
             `
         }
@@ -1419,7 +1419,7 @@ export default class AnimalCrossingScene extends BaseScene {
         this.seasonBtn.style.cssText = `
             position: fixed; top: 20px; left: calc(50% + 90px); z-index: 950;
             padding: 8px 16px; border: none; border-radius: 20px;
-            background: rgba(255,255,255,0.92); color: #4a3b2a;
+            background: rgba(255,255,255,0.92); color: #3f3a32;
             font-size: 14px; font-weight: 600; cursor: pointer;
             backdrop-filter: blur(8px); box-shadow: 0 4px 14px rgba(0,0,0,0.12);
             font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -1559,7 +1559,7 @@ export default class AnimalCrossingScene extends BaseScene {
         this.clockEl.style.cssText = `
             position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
             z-index: 900; padding: 8px 18px; border-radius: 20px;
-            background: rgba(255,255,255,0.88); color: #4a3b2a;
+            background: rgba(255,255,255,0.88); color: #3f3a32;
             font-size: 14px; font-weight: 600; backdrop-filter: blur(8px);
             font-family: 'Helvetica Neue', Arial, sans-serif;
             box-shadow: 0 4px 14px rgba(0,0,0,0.12); pointer-events: none;
@@ -1647,6 +1647,216 @@ export default class AnimalCrossingScene extends BaseScene {
         }
     }
 
+    // ── Island map UI ────────────────────────────────────────────────
+    createMapUI() {
+        if (this.mapBtn) return
+
+        const btn = document.createElement('button')
+        btn.id = 'mapBtn'
+        btn.textContent = '🗺️ 地图'
+        btn.style.cssText = `
+            position: fixed; bottom: 24px; right: 24px; z-index: 1000;
+            padding: 12px 20px; border: none; border-radius: 24px;
+            background: rgba(255,255,255,0.94); color: #3f3a32;
+            font-size: 15px; font-weight: 600; cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12); backdrop-filter: blur(8px);
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            transition: transform 0.2s;
+        `
+        btn.addEventListener('click', () => this.toggleMap())
+        document.body.appendChild(btn)
+        this.mapBtn = btn
+    }
+
+    removeMapUI() {
+        if (this.mapBtn) {
+            this.mapBtn.remove()
+            this.mapBtn = null
+        }
+        if (this.mapModal) {
+            this.mapModal.remove()
+            this.mapModal = null
+        }
+    }
+
+
+    toggleMap() {
+        if (this.mapModal) {
+            this.mapModal.remove()
+            this.mapModal = null
+            return
+        }
+
+        const modal = document.createElement('div')
+        modal.id = 'islandMapModal'
+        modal.style.cssText = `
+            position: fixed; inset: 0; z-index: 1200;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(63,58,50,0.35); backdrop-filter: blur(4px);
+        `
+
+        const isMobile = window.innerWidth < 768
+        const canvasSize = isMobile ? 320 : 420
+        const card = document.createElement('div')
+        card.style.cssText = `
+            position: relative; width: ${canvasSize + 40}px; max-width: calc(100vw - 32px);
+            background: #fffdf8; border-radius: 20px; padding: 22px;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+            font-family: 'Helvetica Neue', Arial, sans-serif; color: #3f3a32;
+        `
+
+        const canvas = document.createElement('canvas')
+        canvas.id = 'islandMapCanvas'
+        canvas.width = canvasSize
+        canvas.height = canvasSize
+        canvas.style.cssText = `
+            width: ${canvasSize}px; height: ${canvasSize}px; max-width: 100%;
+            background: #f0ede3; border-radius: 14px; display: block;
+        `
+
+        const legend = document.createElement('div')
+        legend.style.cssText = `
+            margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px 18px;
+            font-size: 13px; color: #8a8378; justify-content: center;
+        `
+        legend.innerHTML = `
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6d9c8b;margin-right:4px"></span>商店/DIY</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#5aa4c9;margin-right:4px"></span>喷泉/池塘</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#c9665c;margin-right:4px"></span>我的位置</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#b08d4a;margin-right:4px"></span>画架</span>
+        `
+
+        const close = document.createElement('button')
+        close.textContent = '×'
+        close.style.cssText = `
+            position: absolute; top: 12px; right: 12px; width: 34px; height: 34px;
+            border: none; border-radius: 50%; background: #f1ede2; color: #8a8378;
+            font-size: 20px; cursor: pointer; line-height: 1;
+        `
+        close.addEventListener('click', () => {
+            modal.remove()
+            this.mapModal = null
+        })
+
+        card.appendChild(close)
+        card.appendChild(canvas)
+        card.appendChild(legend)
+        modal.appendChild(card)
+        document.body.appendChild(modal)
+        this.mapModal = modal
+
+        this.renderMap(canvas)
+    }
+
+    renderMap(canvas) {
+        const ctx = canvas.getContext('2d')
+        const S = canvas.width
+        const pad = 22
+        const mapS = S - pad * 2
+        const half = mapS / 2
+        const cx = pad + half
+        const cy = pad + half
+        const worldR = 12
+        const scale = half / worldR
+
+        const worldToMap = (x, z) => ({ x: cx + x * scale, y: cy + z * scale })
+
+        // Background already cream via CSS; clear anyway
+        ctx.clearRect(0, 0, S, S)
+
+        // Grass / island base
+        ctx.fillStyle = '#e8f0d8'
+        ctx.beginPath()
+        ctx.roundRect(cx - half + 4, cy - half + 4, mapS - 8, mapS - 8, 18)
+        ctx.fill()
+
+        // Paths (sand)
+        ctx.strokeStyle = '#eaddc5'
+        ctx.lineWidth = 14
+        ctx.lineCap = 'round'
+        ctx.beginPath()
+        // Main cross + ring
+        ctx.moveTo(...Object.values(worldToMap(0, -11)))
+        ctx.lineTo(...Object.values(worldToMap(0, 11)))
+        ctx.moveTo(...Object.values(worldToMap(-11, 0)))
+        ctx.lineTo(...Object.values(worldToMap(11, 0)))
+        ctx.stroke()
+        // Pond
+        const pond = worldToMap(-8.5, -7)
+        ctx.fillStyle = '#a8d8e8'
+        ctx.beginPath()
+        ctx.ellipse(pond.x, pond.y, 34, 26, 0, 0, Math.PI * 2)
+        ctx.fill()
+
+        // Helper for markers
+        const marker = (x, z, color, label, icon = '') => {
+            const p = worldToMap(x, z)
+            ctx.fillStyle = color
+            ctx.beginPath()
+            ctx.arc(p.x, p.y, 7, 0, Math.PI * 2)
+            ctx.fill()
+            ctx.strokeStyle = '#fffdf8'
+            ctx.lineWidth = 2
+            ctx.stroke()
+            if (label) {
+                ctx.fillStyle = '#3f3a32'
+                ctx.font = '12px "Helvetica Neue", Arial, sans-serif'
+                ctx.textAlign = 'center'
+                ctx.fillText(icon + label, p.x, p.y + 19)
+            }
+        }
+
+        // Facilities
+        marker(0, 0, '#5aa4c9', '喷泉', '⛲')
+        marker(4.5, 2.5, '#8a8378', '布告板', '📋')
+        marker(-5.5, 6.5, '#6d9c8b', '商店', '🏪')
+        marker(6.5, 4, '#6d9c8b', 'DIY', '🔨')
+
+        // Easels / painting stands
+        const stands = [[-6, -6], [0, -8], [6, -6], [-6, 6], [0, 8], [6, 6]]
+        stands.forEach(([x, z]) => marker(x, z, '#b08d4a', '', '🎨'))
+
+        // Fruit trees
+        this.trees?.forEach(tree => {
+            const p = worldToMap(tree.position.x, tree.position.z)
+            ctx.fillStyle = '#8bc46c'
+            ctx.beginPath()
+            ctx.arc(p.x, p.y, 5, 0, Math.PI * 2)
+            ctx.fill()
+        })
+
+        // Houses
+        this.houses?.forEach(h => {
+            const p = worldToMap(h.position.x, h.position.z)
+            ctx.fillStyle = '#f4c89c'
+            ctx.beginPath()
+            ctx.roundRect(p.x - 10, p.y - 8, 20, 16, 4)
+            ctx.fill()
+            ctx.fillStyle = '#e07a8a'
+            ctx.beginPath()
+            ctx.arc(p.x, p.y - 8, 10, Math.PI, 0)
+            ctx.fill()
+        })
+
+        // Player
+        const player = this.experience.world?.player
+        if (player?.active) {
+            const p = worldToMap(player.position.x, player.position.z)
+            ctx.fillStyle = '#c9665c'
+            ctx.beginPath()
+            ctx.arc(p.x, p.y, 8, 0, Math.PI * 2)
+            ctx.fill()
+            ctx.strokeStyle = '#fffdf8'
+            ctx.lineWidth = 3
+            ctx.stroke()
+            ctx.fillStyle = '#fff'
+            ctx.font = 'bold 10px "Helvetica Neue", Arial, sans-serif'
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            ctx.fillText('我', p.x, p.y + 1)
+        }
+    }
+
     // ── Gameplay: apple picking & fishing ─────────────────────────────
     setupGameplay() {
         // Show the collect HUD while this scene is active
@@ -1663,6 +1873,9 @@ export default class AnimalCrossingScene extends BaseScene {
         if (this.experience.world?.quests) {
             this.experience.world.quests.show()
         }
+
+        // Map button
+        this.createMapUI()
 
         // Show the guide card once per session
         if (!this._guideShown) {
@@ -1927,6 +2140,9 @@ export default class AnimalCrossingScene extends BaseScene {
         if (this.experience.world?.quests) {
             this.experience.world.quests.hide()
         }
+
+        // Remove map UI
+        this.removeMapUI()
 
         const hud = document.getElementById('collectHud')
         if (hud) hud.classList.remove('visible')
@@ -2235,7 +2451,7 @@ export default class AnimalCrossingScene extends BaseScene {
         ctx.lineTo(256, 180)
         ctx.lineTo(286, 134)
         ctx.fill()
-        ctx.fillStyle = '#4a3b2a'
+        ctx.fillStyle = '#3f3a32'
         ctx.font = '34px "Helvetica Neue", Arial, sans-serif'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
@@ -2329,6 +2545,12 @@ export default class AnimalCrossingScene extends BaseScene {
         this.updateActionGuide(delta)
         this.updateDayNight(delta)
         this.updateSeason(delta)
+
+        // Refresh map if open (player marker moves)
+        if (this.mapModal) {
+            const canvas = this.mapModal.querySelector('#islandMapCanvas')
+            if (canvas) this.renderMap(canvas)
+        }
 
         // Clouds drift
         this.clouds.forEach((cloud) => {

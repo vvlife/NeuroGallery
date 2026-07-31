@@ -94,7 +94,7 @@ export default class Inventory {
         this.button.style.cssText = `
             position: fixed; bottom: 24px; left: 24px; z-index: 1000;
             padding: 12px 20px; border: none; border-radius: 24px;
-            background: rgba(255,255,255,0.94); color: #4a3b2a;
+            background: rgba(255,255,255,0.94); color: #3f3a32;
             font-size: 15px; font-weight: 600; cursor: pointer;
             box-shadow: 0 4px 16px rgba(0,0,0,0.15); backdrop-filter: blur(8px);
             font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -109,18 +109,18 @@ export default class Inventory {
         this.panel.style.cssText = `
             position: fixed; bottom: 84px; left: 24px; z-index: 1100;
             width: 320px; max-width: calc(100vw - 48px);
-            background: #fffdf5; border-radius: 18px;
+            background: #fffdf8; border-radius: 18px;
             box-shadow: 0 16px 48px rgba(0,0,0,0.25);
             padding: 18px; display: none;
-            font-family: 'Helvetica Neue', Arial, sans-serif; color: #4a3b2a;
+            font-family: 'Helvetica Neue', Arial, sans-serif; color: #3f3a32;
         `
         this.panel.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                 <strong style="font-size:17px">🎒 背包</strong>
-                <span id="invBells" style="font-weight:700;color:#b8860b">💰 0</span>
+                <span id="invBells" style="font-weight:700;color:#b08d4a">💰 0</span>
             </div>
             <div id="invGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px"></div>
-            <div id="invEmpty" style="text-align:center;color:#a89880;font-size:13px;padding:18px 0">空空如也，去摘点什么吧</div>
+            <div id="invEmpty" style="text-align:center;color:#a39c8e;font-size:13px;padding:18px 0">空空如也，去摘点什么吧</div>
         `
         document.body.appendChild(this.panel)
 
@@ -177,13 +177,13 @@ export default class Inventory {
 
         grid.innerHTML = entries.map(([id, n]) => {
             const def = ITEM_DEFS[id] || { icon: '❔', name: id }
-            const placeable = def.furniture ? 'cursor:pointer;outline:2px dashed #b89a5a;outline-offset:-2px' : 'cursor:default'
+            const placeable = def.furniture ? 'cursor:pointer;outline:2px dashed #6d9c8b;outline-offset:-2px' : 'cursor:default'
             const hint = def.furniture ? `${def.name}（点击摆放）` : def.name
             return `
                 <div class="inv-cell" data-item="${id}" data-furniture="${def.furniture ? 1 : ''}" title="${hint}"
-                     style="background:#f7f1e3;border-radius:12px;padding:10px 4px;text-align:center;${placeable};position:relative">
+                     style="background:#f4f0e5;border-radius:12px;padding:10px 4px;text-align:center;${placeable};position:relative">
                     <div style="font-size:24px">${def.icon}</div>
-                    <div style="font-size:11px;color:#8b7355;margin-top:2px">${def.name}</div>
+                    <div style="font-size:11px;color:#8a8378;margin-top:2px">${def.name}</div>
                     <span style="position:absolute;top:2px;right:6px;font-size:12px;font-weight:700;color:#6b5a3e">×${n}</span>
                 </div>
             `

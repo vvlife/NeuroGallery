@@ -8,7 +8,7 @@ html,
 body {
     font-family: 'Helvetica Neue', Arial, sans-serif;
     background: #f0f0f0;
-    color: #333;
+    color: #3f3a32;
     overflow: hidden;
 }
 
@@ -37,7 +37,7 @@ body.gui-mode * {
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #f0ede3;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -47,20 +47,21 @@ body.gui-mode * {
 
 .loading-container {
     text-align: center;
-    color: white;
+    color: #3f3a32;
 }
 
 .loading-title {
     font-size: 3rem;
-    font-weight: 300;
+    font-weight: 400;
     margin-bottom: 2rem;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.15em;
+    color: #6d9c8b;
 }
 
 .loading-bar-container {
     width: 300px;
     height: 4px;
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(63, 58, 50, 0.12);
     border-radius: 2px;
     overflow: hidden;
     margin: 2rem auto;
@@ -68,7 +69,7 @@ body.gui-mode * {
 
 .loading-bar {
     height: 100%;
-    background: white;
+    background: #6d9c8b;
     width: 0;
     transition: width 0.3s ease;
     border-radius: 2px;
@@ -76,8 +77,9 @@ body.gui-mode * {
 
 .loading-text {
     font-size: 1.2rem;
-    font-weight: 300;
+    font-weight: 400;
     margin-top: 1rem;
+    color: #8a8378;
 }
 
 .loading-progress {
@@ -94,7 +96,7 @@ body.gui-mode * {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(240, 237, 227, 0.96);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -104,48 +106,52 @@ body.gui-mode * {
 
 .entry-content {
     text-align: center;
-    color: white;
+    color: #3f3a32;
     max-width: 600px;
     padding: 2rem;
 }
 
 .entry-title {
     font-size: 4rem;
-    font-weight: 300;
+    font-weight: 400;
     margin-bottom: 1rem;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.15em;
+    color: #6d9c8b;
 }
 
 .entry-subtitle {
     font-size: 1.5rem;
     font-weight: 300;
     margin-bottom: 3rem;
-    opacity: 0.8;
+    opacity: 0.75;
+    color: #8a8378;
 }
 
 .entry-button {
-    background: linear-gradient(45deg, #667eea, #764ba2);
+    background: #6d9c8b;
     color: white;
     border: none;
     padding: 1rem 2rem;
     font-size: 1.2rem;
-    font-weight: 300;
+    font-weight: 500;
     border-radius: 50px;
     cursor: pointer;
     transition: all 0.3s ease;
     letter-spacing: 0.1em;
     margin-bottom: 2rem;
+    box-shadow: 0 8px 24px rgba(109, 156, 139, 0.35);
 }
 
 .entry-button:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 12px 28px rgba(109, 156, 139, 0.45);
 }
 
 .entry-instructions {
     font-size: 1rem;
-    opacity: 0.6;
+    opacity: 0.65;
     line-height: 1.6;
+    color: #3f3a32;
 }
 
 /* Painting Info Panel */
@@ -182,7 +188,7 @@ body.gui-mode * {
     border: none;
     font-size: 2rem;
     cursor: pointer;
-    color: #999;
+    color: #8a8378;
     transition: color 0.3s ease;
     width: 40px;
     height: 40px;
@@ -193,7 +199,7 @@ body.gui-mode * {
 }
 
 .painting-info-close:hover {
-    color: #333;
+    color: #3f3a32;
     background: #f0f0f0;
 }
 
@@ -201,25 +207,25 @@ body.gui-mode * {
     font-size: 2rem;
     font-weight: 300;
     margin-bottom: 1rem;
-    color: #333;
+    color: #3f3a32;
     padding-right: 3rem;
 }
 
 .painting-info-model {
     font-size: 1.1rem;
-    color: #666;
+    color: #8a8378;
     margin-bottom: 1rem;
     font-style: italic;
 }
 
 .painting-info-prompt {
     font-size: 1rem;
-    color: #555;
+    color: #6d6a64;
     line-height: 1.6;
     padding: 1rem;
     background: #f8f8f8;
     border-radius: 10px;
-    border-left: 4px solid #667eea;
+    border-left: 4px solid #6d9c8b;
 }
 
 /* Top Toolbar */
@@ -245,7 +251,7 @@ body.gui-mode * {
     cursor: pointer;
     font-size: 15px;
     font-weight: 500;
-    color: #333;
+    color: #3f3a32;
     background: rgba(255, 255, 255, 0.95);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     backdrop-filter: blur(10px);
@@ -284,7 +290,7 @@ body.gui-mode * {
 .lil-gui {
     --background-color: rgba(15, 15, 25, 0.9) !important;
     --text-color: #e0e4e8 !important;
-    --title-background-color: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    --title-background-color: linear-gradient(135deg, #6d9c8b 0%, #6d9c8b 100%) !important;
     --title-text-color: white !important;
     --widget-color: rgba(255, 255, 255, 0.15) !important;
     --hover-color: rgba(102, 126, 234, 0.4) !important;
@@ -327,12 +333,12 @@ body.gui-mode * {
 }
 
 .lil-gui::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #6d9c8b, #6d9c8b);
     border-radius: 3px;
 }
 
 .lil-gui::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, #764ba2, #667eea);
+    background: linear-gradient(135deg, #6d9c8b, #6d9c8b);
 }
 
 /* Folder titles styling */
@@ -639,7 +645,7 @@ html {
     border: none;
     font-size: 2rem;
     cursor: pointer;
-    color: #999;
+    color: #8a8378;
     transition: color 0.3s ease;
     width: 40px;
     height: 40px;
@@ -650,7 +656,7 @@ html {
 }
 
 .easel-modal-close:hover {
-    color: #333;
+    color: #3f3a32;
     background: #f0f0f0;
 }
 
@@ -672,7 +678,7 @@ html {
 }
 
 .easel-modal-btn-primary {
-    background: linear-gradient(45deg, #667eea, #764ba2);
+    background: linear-gradient(45deg, #6d9c8b, #6d9c8b);
     color: white;
 }
 
@@ -704,7 +710,7 @@ html {
 }
 
 #prompt-input:focus {
-    border-color: #667eea;
+    border-color: #6d9c8b;
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -716,7 +722,7 @@ html {
 
 .easel-modal-title {
     margin-top: 0;
-    color: #333;
+    color: #3f3a32;
     text-align: center;
     font-size: 2rem;
     font-weight: 300;
@@ -759,7 +765,7 @@ html {
 }
 
 .easel-modal-description {
-    color: #666;
+    color: #8a8378;
     text-align: center;
     margin-bottom: 20px;
     font-size: 1.1rem;
@@ -784,7 +790,7 @@ html {
     cursor: pointer;
     font-size: 15px;
     font-weight: 500;
-    color: #333;
+    color: #3f3a32;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     backdrop-filter: blur(10px);
     transition: all 0.3s ease;
@@ -827,7 +833,7 @@ html {
     background: transparent;
     cursor: pointer;
     font-size: 14px;
-    color: #333;
+    color: #3f3a32;
     transition: all 0.2s ease;
     text-align: left;
 }
@@ -838,7 +844,7 @@ html {
 
 .scene-option.active {
     background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
-    color: #667eea;
+    color: #6d9c8b;
     font-weight: 600;
 }
 
@@ -846,7 +852,7 @@ html {
     content: '✓';
     position: absolute;
     right: 15px;
-    color: #667eea;
+    color: #6d9c8b;
 }
 
 .scene-icon {
@@ -996,7 +1002,7 @@ html {
     backdrop-filter: blur(8px);
     font-size: 16px;
     font-weight: 600;
-    color: #4a3b2a;
+    color: #3f3a32;
     font-family: 'Helvetica Neue', Arial, sans-serif;
     opacity: 0;
     transform: translateY(-8px);
@@ -1023,8 +1029,8 @@ html {
     transform: translateX(-50%) translateY(10px);
     z-index: 950;
     padding: 12px 24px;
-    background: rgba(74, 59, 42, 0.88);
-    color: #fff8e7;
+    background: rgba(255, 253, 248, 0.96);
+    color: #3f3a32;
     border-radius: 24px;
     font-size: 15px;
     font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -1034,6 +1040,8 @@ html {
     opacity: 0;
     transition: opacity 0.35s ease, transform 0.35s ease;
     white-space: nowrap;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+    border: 1px solid rgba(109, 156, 139, 0.25);
 }
 
 .gameplay-toast.visible {
@@ -1080,12 +1088,12 @@ html {
     position: relative;
     max-width: 400px;
     width: calc(100% - 48px);
-    background: #fffdf5;
+    background: #fffdf8;
     border-radius: 20px;
     padding: 28px 28px 22px;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
     font-family: 'Helvetica Neue', Arial, sans-serif;
-    color: #4a3b2a;
+    color: #3f3a32;
 }
 
 .ac-guide-title {
@@ -1104,7 +1112,7 @@ html {
     padding: 9px 0;
     font-size: 15px;
     line-height: 1.5;
-    border-bottom: 1px dashed #e8dcc8;
+    border-bottom: 1px dashed #e5dfd2;
 }
 
 .ac-guide-list li:last-child {
@@ -1119,8 +1127,8 @@ html {
     height: 34px;
     border: none;
     border-radius: 50%;
-    background: #f0e8d8;
-    color: #8b7355;
+    background: #f1ede2;
+    color: #8a8378;
     font-size: 20px;
     cursor: pointer;
     transition: background 0.2s;

@@ -18,7 +18,7 @@ export default class Player {
         this.group = null
         this.position = new THREE.Vector3(0, 0, 6)
         this.facing = 0                 // character facing angle
-        this.camYaw = Math.PI           // camera orbit yaw
+        this.camYaw = 0                 // camera orbit yaw (camera behind the character)
         this.camPitch = 0.42            // camera orbit pitch
         this.camDist = 5.5
         this.velY = 0
@@ -184,7 +184,7 @@ export default class Player {
         // Face the island centre and put the camera behind
         this.position.set(0, 0, 6)
         this.facing = Math.PI
-        this.camYaw = Math.PI
+        this.camYaw = 0                 // offset (0,+1) → camera sits behind (player faces −z)
         this.group.position.copy(this.position)
 
         document.addEventListener('keydown', this._boundKeyDown)
@@ -401,11 +401,13 @@ export default class Player {
             ix /= Math.max(1, len)
             iz /= Math.max(1, len)
 
-            // Rotate input by camera yaw so "forward" is where the camera looks
+            // Rotate input by camera yaw so "forward" is where the camera looks.
+            // Camera sits at player + (sin, cos)·dist, so its look direction
+            // is (-sin, -cos) — forward input must move along that.
             const sin = Math.sin(this.camYaw)
             const cos = Math.cos(this.camYaw)
-            const dx = (ix * cos - iz * sin)
-            const dz = (-ix * sin - iz * cos)
+            const dx = (ix * cos + iz * sin)
+            const dz = (-ix * sin + iz * cos)
 
             const speed = this.keys.sprint ? this.sprintSpeed : this.walkSpeed
             this.position.x += dx * speed * delta
